@@ -1,4 +1,4 @@
-// EliteDangerousX52MFD.cpp : Defines the entry point for the console application.
+// EliteDangerousX52MFD.cpp : Entry point
 
 #include "stdafx.h"
 #include "DirectOutputFn.h"
@@ -16,6 +16,8 @@ void checkHR(HRESULT hr);
 
 int main()
 {
+	// TODO: Get user to input profile filepath
+
 	// Initialize DirectOutput
 	checkHR(fn.Initialize(L"EliteDangerousX52MFD"));
 
@@ -28,32 +30,48 @@ int main()
 	// Set the profile
 	checkHR(fn.setDeviceProfile(profileFilepath));
 
-	// Set greeting message
-	// Page 0 (initial page) will be reserved for greeting and profile name
-	// Add/Set page
-	checkHR(fn.setPage(0, FLAG_SET_AS_ACTIVE));
+	// Register right soft button clicks and scrolls
+	checkHR(fn.registerSoftBtnCallback());
 
-	// Set String
+	// Register page change callback
+	checkHR(fn.registerPageCallback());
+	cout << "Setup Complete.\n\n";
+
+	// Add 5 pages
+	for (int i = 0; i < 6; i++)
+	{
+		if (i == 0)
+		{
+			checkHR(fn.setPage(0, FLAG_SET_AS_ACTIVE));
+		}
+		else
+		{
+			checkHR(fn.setPage(i, 0));
+		}
+	}
+
+	// Set default greeting
 	checkHR(fn.setString(0, 0, TEXT("Greetings CMDR")));
-	checkHR(fn.setString(0, 2, TEXT("Elite Dangerous")));
+	checkHR(fn.setString(0, 1, TEXT("Page 0")));
 
 	// Pause to check outputs
-	cout << "Press enter to deinitialize.\n";
+	cout << "\nPress enter to deinitialize.\n";
 	cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+	//Unregister the callbacks
+	checkHR(fn.unRegisterSoftBtnCallback());
+	checkHR(fn.unRegisterPageCallback());
 
 	// Deinitialize DirectOutput
 	checkHR(fn.Deinitialize());
-
-
-	// TEMP -> Create some runtime 
-	// PAUSE TO CHECK STATUSES 
+ 
 	cout << "Press enter to free DirectOutput.dll and quit.\n";
 	cin.ignore(numeric_limits<streamsize>::max(), '\n');
     return 0;
 }
 
 /*
-	INPUTS: HRESULT hr == some functions from DirectOutput return a HRESULT value, this just checks if it pass/fail and ouputs to the console
+	PARAMETERS: HRESULT hr == some functions from DirectOutput return a HRESULT value, this just checks if it pass/fail and ouputs to the console
 	RETURNS: none
 
 	FUNCTION: Checks resulkt of the function if it returns an HRESULT value
@@ -69,6 +87,6 @@ void checkHR(HRESULT hr) {
 	}
 	else
 	{
-		cout << "FAILED.\n";
+		cout << "FAILED/ hr = " << hr << endl;
 	}
 }
