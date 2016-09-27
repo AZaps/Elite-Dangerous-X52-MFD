@@ -6,7 +6,7 @@
 *.user
 *.userosscache
 *.sln.docstates
-*.txt
+EDX52Settings.txt
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
