@@ -14,6 +14,7 @@
 #include "resource.h"
 
 #include <dinput.h>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <SetupAPI.h>
