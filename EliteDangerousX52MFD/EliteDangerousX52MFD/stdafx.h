@@ -22,3 +22,4 @@
 #include <vector>
 
 #include <Windows.h>
+#undef max

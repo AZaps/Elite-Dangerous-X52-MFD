@@ -1,14 +1,14 @@
 // EliteDangerousX52MFD.cpp : Entry point
 
 #include "stdafx.h"
+#include <chrono>
 #include <sys/stat.h>
 #include <Shlwapi.h>
 #include <ShlObj.h>
 #include <string>
 #include <sstream>
+#include <thread>
 #include "DirectOutputFn.h"
-#undef max
-
 
 using namespace std;
 
@@ -19,6 +19,8 @@ DirectOutputFn fn;
 TCHAR profileFilepath[260];
 TCHAR edceScriptFilepath[260];
 TCHAR edceJSONFilepath[260];
+TCHAR defaultDirectory[260];
+TCHAR edceDirectory[260];
 
 bool foundProfile = false;
 
@@ -29,6 +31,14 @@ void getFilepaths();
 void createTxtFile();
 bool getFilePathName(bool isProfile);
 void contactEDCE();
+
+
+/*
+	TODO:
+	Get and save the current directory permanetly
+	Get and save the directory of the edce script and save permanetly
+*/
+
 
 int main()
 {
@@ -76,6 +86,20 @@ int main()
 
 	// Set default greeting
 	checkHR(fn.setString(0, 0, TEXT("Greetings CMDR")));
+
+	// Main loop, run once aa minute
+	bool isEliteRunning = true;
+	LPCTSTR appName = TEXT("Elite Dangerous Launcher");
+	do
+	{
+		contactEDCE();
+
+		if (FindWindow(NULL, appName) == NULL)
+		{
+			isEliteRunning = false;
+		}
+		system("cls");
+	} while (isEliteRunning);
 
 	// Pause to check outputs
 	cout << "\nPress enter to deinitialize.\n";
@@ -162,6 +186,21 @@ void txtFileCheck()
 					}
 					lineNumber++;
 					break;
+				case 3:
+					strSize = line.length();
+					for (size_t i = 0; i < strSize; i++)
+					{
+						defaultDirectory[i] = line[i];
+					}
+					lineNumber++;
+					break;
+				case 4:
+					strSize = line.length();
+					for (size_t i = 0; i < strSize; i++)
+					{
+						edceDirectory[i] = line[i];
+					}
+					break;
 				default:
 					break;
 				}
@@ -184,8 +223,8 @@ void txtFileCheck()
 void getFilepaths()
 {
 	// Get the current directory so it can be restored after the files have been found
-	TCHAR startingDirectory[260];
-	GetCurrentDirectory(MAX_PATH, startingDirectory);
+	GetCurrentDirectory(MAX_PATH, defaultDirectory);
+
 	// Get filepaths for the profile to be used, the location of the edce_client.py and create a filepath to last.json
 	cout << "Couldn't find file. Creating file \"EDX52Settings.txt\"...\n\n";
 	cout << "Please select your profile to use. This will allow use of pre-assigned keybindings, colors, settings, etc.\n";
@@ -217,13 +256,20 @@ void getFilepaths()
 			tempArray[i] = edceScriptFilepath[i];
 		}
 		PathRemoveFileSpecA(tempArray);
-		strcat_s(tempArray, "\\last.json\0");
 		size_t tempArraySize = strlen(tempArray) + 1;
-		wchar_t * wcString = new wchar_t[tempArraySize];
+		wchar_t *wcString = new wchar_t[tempArraySize];
 		size_t convertedChars = 0;
 		mbstowcs_s(&convertedChars, wcString, tempArraySize, tempArray, _TRUNCATE);
-		wcscpy_s(edceJSONFilepath, wcString);
+		wcscpy_s(edceDirectory, wcString);
 		delete[] wcString;
+
+		strcat_s(tempArray, "\\last.json\0");
+		tempArraySize = strlen(tempArray) + 1;
+		wchar_t *wcStr = new wchar_t[tempArraySize];
+		convertedChars = 0;
+		mbstowcs_s(&convertedChars, wcStr, tempArraySize, tempArray, _TRUNCATE);
+		wcscpy_s(edceJSONFilepath, wcStr);
+		delete[] wcStr;
 		wcout << edceJSONFilepath << endl;
 
 		cout << "Got needed filepaths. Creating txt file to save these paths.\n\n";
@@ -233,7 +279,7 @@ void getFilepaths()
 		cout << "Couldn't get the script location or the operation was canceled.\n\n";
 	}
 	// Restore the starting directory
-	SetCurrentDirectory(startingDirectory);
+	SetCurrentDirectory(defaultDirectory);
 }
 
 void createTxtFile() {
@@ -252,6 +298,8 @@ void createTxtFile() {
 	myFile << profileFilepath << "\n";
 	myFile << edceScriptFilepath << "\n";
 	myFile << edceJSONFilepath << "\n";
+	myFile << defaultDirectory << "\n";
+	myFile << edceDirectory << "\n";
 	myFile.close();
 	cout << "Wrote to txt file.\n\n";
 }
@@ -301,5 +349,25 @@ bool getFilePathName(bool isProfile)
 
 void contactEDCE()
 {
+	// Do this once a minute and then update pages with relevant data
+	// Need to set the directory from the script location
+	SetCurrentDirectory(edceDirectory);
+	
+	// Run the script
+	_wsystem(edceScriptFilepath);
+	cout << "Cooldown: 2.5 minutes\n";
+	// Wait for 2.5 minutes
+	using namespace std::this_thread;
+	using namespace std::chrono;
+	int timer = 150;
+	while (timer != 0)
+	{
+		sleep_until(system_clock::now() + 1s);
+		timer--;
+		cout << timer << "..";
+	}
+	cout << endl;
 
+	// Restore working directory
+	SetCurrentDirectory(defaultDirectory);
 }
