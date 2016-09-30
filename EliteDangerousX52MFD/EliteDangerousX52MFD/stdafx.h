@@ -19,6 +19,7 @@
 #include <limits>
 #include <SetupAPI.h>
 #include <strsafe.h>
+#include <string>
 #include <vector>
 
 #include <Windows.h>

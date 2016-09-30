@@ -33,7 +33,6 @@ private:
 	static void __stdcall OnDeviceChanged(void* hDevice, bool bAdded, void* pCtxt);
 	static void __stdcall OnPageChanged(void* hDevice, DWORD dwPage, bool bSetActive, void* pCtxt);
 	static void __stdcall OnSoftButtonChanged(void* hDevice, DWORD dwButtons, void* pCtxt);
-
-	
+	void updatePageOnScroll(int oneUpZeroDown);
 };
 

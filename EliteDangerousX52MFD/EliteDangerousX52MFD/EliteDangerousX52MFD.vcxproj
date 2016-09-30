@@ -147,7 +147,9 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\json.hpp" />
     <ClInclude Include="DirectOutputFn.h" />
+    <ClInclude Include="JSONDataStructure.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -155,6 +157,7 @@
   <ItemGroup>
     <ClCompile Include="DirectOutputFn.cpp" />
     <ClCompile Include="EliteDangerousX52MFD.cpp" />
+    <ClCompile Include="JSONDataStructure.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
