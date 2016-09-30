@@ -1,20 +1,32 @@
 // EliteDangerousX52MFD.cpp : Entry point
 
+/*
+	EliteDangerousX52MFD 
+	Special Thanks to:
+		Frontier for Elite Dangerous
+		Saitek for the use and development of the SDK to run this project
+		Andargor for the work on Elite Dangerous Companion Emulator (https://github.com/Andargor/edce-client)
+		Niels Lohmann for the work on JSON for Modern C++ (https://github.com/nlohmann/json)
+*/
+
 #include "stdafx.h"
 #include <chrono>
 #include <sys/stat.h>
 #include <Shlwapi.h>
 #include <ShlObj.h>
-#include <string>
 #include <sstream>
 #include <thread>
 #include "DirectOutputFn.h"
+#include "JSONDataStructure.h"
 
 using namespace std;
 
 // DirectOutput function object
 // Creation of this object automatically loads in DirectOutput but it still needs to be initialized
 DirectOutputFn fn;
+
+// Accessor to JSON file
+JSONDataStructure jsonDataClass;
 
 TCHAR profileFilepath[260];
 TCHAR edceScriptFilepath[260];
@@ -24,21 +36,13 @@ TCHAR edceDirectory[260];
 
 bool foundProfile = false;
 
-// Functions
+// Internal Functions
 void checkHR(HRESULT hr);
 void txtFileCheck();
 void getFilepaths();
 void createTxtFile();
 bool getFilePathName(bool isProfile);
 void contactEDCE();
-
-
-/*
-	TODO:
-	Get and save the current directory permanetly
-	Get and save the directory of the edce script and save permanetly
-*/
-
 
 int main()
 {
@@ -84,22 +88,22 @@ int main()
 		}
 	}
 
-	// Set default greeting
-	checkHR(fn.setString(0, 0, TEXT("Greetings CMDR")));
+	jsonDataClass.readStoreJSON(edceDirectory, defaultDirectory, edceJSONFilepath);
 
 	// Main loop, run once aa minute
-	bool isEliteRunning = true;
+	/*bool isEliteRunning = true;
 	LPCTSTR appName = TEXT("Elite Dangerous Launcher");
 	do
 	{
 		contactEDCE();
+		// Update information if neccessary
 
 		if (FindWindow(NULL, appName) == NULL)
 		{
 			isEliteRunning = false;
 		}
 		system("cls");
-	} while (isEliteRunning);
+	} while (isEliteRunning);*/
 
 	// Pause to check outputs
 	cout << "\nPress enter to deinitialize.\n";
@@ -112,8 +116,6 @@ int main()
 	// Deinitialize DirectOutput
 	checkHR(fn.Deinitialize());
  
-	cout << "Press enter to free DirectOutput.dll and quit.\n";
-	cin.ignore(numeric_limits<streamsize>::max(), '\n');
     return 0;
 }
 

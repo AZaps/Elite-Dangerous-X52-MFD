@@ -1,8 +1,7 @@
 // DirectOutputFn.cpp : Contains all the functions used to communicate with the X52 Pro MFD
 #include "stdafx.h"
 #include "DirectOutputFn.h"
-
-#undef max
+#include "JSONDataStructure.h"
 
 using namespace std;
 
@@ -37,6 +36,7 @@ DirectOutputFn::~DirectOutputFn()
 	}
 
 	cout << "Removed DirectOutputFn constructor.\n";
+	cout << "Press enter to quit...";
 	cin.ignore(numeric_limits<streamsize>::max(), '\n');
 }
 
@@ -182,7 +182,7 @@ HRESULT DirectOutputFn::setPage(int pageNumber, const DWORD flag)
 */
 HRESULT DirectOutputFn::setString(int pageNumber, int stringLineID, wchar_t * stringToOutput)
 {
-	cout << "Setting string... ";
+	//cout << "Setting string... ";
 	Pfn_DirectOutput_SetString fnSetString = (Pfn_DirectOutput_SetString)GetProcAddress(dll, "DirectOutput_SetString");
 	void * hDevice = m_devices[0];
 	size_t stringLength = wcslen(stringToOutput);
@@ -271,11 +271,14 @@ void DirectOutputFn::handlePageChange()
 	switch (currentPage)
 	{
 	case 0:
-		setString(0, 0, TEXT("Greetings CMDR"));
-		setString(0, 1, TEXT("Page 0"));
+		setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[0]);
+		setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[1]);
+		setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[2]);
 		break;
 	case 1:
-		setString(1, 1, TEXT("Page 1"));
+		setString(1, 0, jsonDataClass.pg1.cmdrPage1Info[0]);
+		setString(1, 1, jsonDataClass.pg1.cmdrPage1Info[1]);
+		setString(1, 2, jsonDataClass.pg1.cmdrPage1Info[2]);
 		break;
 	case 2:
 		setString(2, 2, TEXT("Page 2"));
@@ -292,7 +295,6 @@ void DirectOutputFn::handlePageChange()
 		break;
 	}
 }
-
 
 
 // Private Functions
@@ -337,9 +339,9 @@ void __stdcall DirectOutputFn::OnDeviceChanged(void * hDevice, bool bAdded, void
 void __stdcall DirectOutputFn::OnPageChanged(void * hDevice, DWORD dwPage, bool bSetActive, void * pCtxt)
 {
 	DirectOutputFn* pThis = (DirectOutputFn*)pCtxt;
-	cout << "Page change.\n";
+	/*cout << "Page change.\n";
 	cout << "bsetActive == " << bSetActive << endl;
-	cout << "dwPage == " << dwPage << endl;
+	cout << "dwPage == " << dwPage << endl;*/
 	pThis->currentPage = dwPage;
 	pThis->handlePageChange();
 }
@@ -350,17 +352,97 @@ void __stdcall DirectOutputFn::OnSoftButtonChanged(void * hDevice, DWORD dwButto
 	if (dwButtons & 0x00000002)
 	{
 		++pThis->m_scrollpos;
-		cout << "Scroll ++";
+		//cout << "Scroll ++";
+		pThis->updatePageOnScroll(1);
 	}
 	else if (dwButtons & 0x0000004)
 	{
 		--pThis->m_scrollpos;
-		cout << "Scroll --";
+		//cout << "Scroll --";
+		pThis->updatePageOnScroll(0);
 	}
 }
 
-
-
+void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
+{
+	switch (currentPage)
+	{
+	case 0:
+		if (oneUpZeroDown == 1)
+		{
+			jsonDataClass.pg0.currentLine--;
+			if (jsonDataClass.pg0.currentLine < 0)
+			{
+				jsonDataClass.pg0.currentLine = 9;
+			}
+		}
+		else if (oneUpZeroDown == 0)
+		{
+			jsonDataClass.pg0.currentLine++;
+			if (jsonDataClass.pg0.currentLine == 10)
+			{
+				jsonDataClass.pg0.currentLine = 0;
+			}
+		}
+		switch (jsonDataClass.pg0.currentLine)
+		{
+		case 8:
+			setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine]);
+			setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine + 1]);
+			setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine - 8]);
+			break;
+		case 9:
+			setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine]);
+			setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine - 9]);
+			setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine - 8]);
+			break;
+		default:
+			setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine]);
+			setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine + 1]);
+			setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine + 2]);
+			break;
+		}
+		break;
+	case 1:
+		if (oneUpZeroDown == 1)
+		{
+			jsonDataClass.pg1.currentLine--;
+			if (jsonDataClass.pg1.currentLine < 0)
+			{
+				jsonDataClass.pg1.currentLine = 5;
+			}
+		}
+		else if (oneUpZeroDown == 0)
+		{
+			jsonDataClass.pg1.currentLine++;
+			if (jsonDataClass.pg1.currentLine == 6)
+			{
+				jsonDataClass.pg1.currentLine = 0;
+			}
+		}
+		switch (jsonDataClass.pg1.currentLine)
+		{
+		case 4:
+			setString(1, 0, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine]);
+			setString(1, 1, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine + 1]);
+			setString(1, 2, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine - 4]);
+			break;
+		case 5:
+			setString(1, 0, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine]);
+			setString(1, 1, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine - 5]);
+			setString(1, 2, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine - 4]);
+			break;
+		default:
+			setString(1, 0, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine]);
+			setString(1, 1, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine + 1]);
+			setString(1, 2, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine + 2]);
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+}
 
 
 
