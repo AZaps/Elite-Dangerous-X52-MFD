@@ -1,5 +1,5 @@
 #pragma once
-#include "../Include/DirectOutput.h"
+#include "DepInclude\DirectOutput.h"
 
 class DirectOutputFn
 {
