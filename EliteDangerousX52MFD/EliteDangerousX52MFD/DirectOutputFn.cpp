@@ -340,9 +340,6 @@ void __stdcall DirectOutputFn::OnDeviceChanged(void * hDevice, bool bAdded, void
 void __stdcall DirectOutputFn::OnPageChanged(void * hDevice, DWORD dwPage, bool bSetActive, void * pCtxt)
 {
 	DirectOutputFn* pThis = (DirectOutputFn*)pCtxt;
-	/*cout << "Page change.\n";
-	cout << "bsetActive == " << bSetActive << endl;
-	cout << "dwPage == " << dwPage << endl;*/
 	pThis->currentPage = dwPage;
 	pThis->handlePageChange();
 }
@@ -353,17 +350,22 @@ void __stdcall DirectOutputFn::OnSoftButtonChanged(void * hDevice, DWORD dwButto
 	if (dwButtons & 0x00000002)
 	{
 		++pThis->m_scrollpos;
-		//cout << "Scroll ++";
 		pThis->updatePageOnScroll(1);
 	}
 	else if (dwButtons & 0x0000004)
 	{
 		--pThis->m_scrollpos;
-		//cout << "Scroll --";
 		pThis->updatePageOnScroll(0);
 	}
 }
 
+/*
+	PARAMETERS: int oneUpZeroDown -> int value to determine if the user wants to scroll down or up. Value of 1 will scroll up, value of zero will scroll down.
+	RETURNS: none
+
+	FUNCTION: Updates the current page based on the scroll function of the right wheel. A value of 1 passed in will change the strings presented from 1,2,3 to 0,1,2. A value of 0 passed in will scroll down 0,1,2 to 1,2,3. This behavior replicated a scroll wheel on the mouse.
+				Needs to be on a page by page case switch since each is independent.
+*/
 void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
 {
 	switch (currentPage)
@@ -493,6 +495,3 @@ void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
 		break;
 	}
 }
-
-
-
