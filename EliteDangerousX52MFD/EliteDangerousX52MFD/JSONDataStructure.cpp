@@ -7,6 +7,14 @@
 using json = nlohmann::json;
 using namespace std;
 
+/*
+	PARAMETERS: TCHAR *jsonDirectory -> Filepath location of the folder where the json file is located
+				TCHAR *defaultDirectory -> Folder location of this project
+				TCHAR *jsonFilepath -> Exact file location of the json file
+	RETURNS: none
+
+	FUNCTION: Entry point for this file to handle page updates
+*/
 void JSONDataStructure::readStoreJSON(TCHAR *jsonDirectory, TCHAR *defaultDirectory, TCHAR *jsonFilepath) {
 	SetCurrentDirectory(jsonDirectory);
 	setPage0(jsonFilepath);
@@ -15,6 +23,15 @@ void JSONDataStructure::readStoreJSON(TCHAR *jsonDirectory, TCHAR *defaultDirect
 	setPage3(jsonFilepath);
 	SetCurrentDirectory(defaultDirectory);
 }
+
+/*
+	PARAMETERS:	TCHAR *jsonDirectory -> Filepath location of the folder where the json file is located
+				TCHAR *defaultDirectory -> Folder location of this project
+				TCHAR *jsonFilepath -> Exact file location of the json file
+	RETURNS: none
+
+	FUNCTION: Will determine the current page by the handle to the DirectOutputFn object and update that page on the MFD. This is so the page doesn't have to be manually refreshed by the user every polling update
+*/
 
 void JSONDataStructure::updateCurrentPage(TCHAR *jsonDirectory, TCHAR *defaultDirectory, TCHAR *jsonFilepath, DirectOutputFn& fnJSON)
 {
@@ -62,6 +79,12 @@ void JSONDataStructure::updateCurrentPage(TCHAR *jsonDirectory, TCHAR *defaultDi
 }
 
 /*
+	PARAMETERS: TCHAR *jsonFilepath -> location of the json file so the data can be read from it and stored locally to update on the controller
+	RETURNS: none
+
+	FUNCTION: Reads the json file and updates the relevant page information listed below. Uses null checking on the json file so if the current key value doesn't exist it won't crash upon trying to read a non existant key value. 
+*/
+/*
 	Page 0 consists of:
 	Greetings CMDR
 	(CMDR NAME)
@@ -85,6 +108,7 @@ void JSONDataStructure::setPage0(TCHAR *jsonFilepath)
 	}
 	wcsncpy_s(pg0.cmdrPage0Info[0], L"Greetings CMDR", length);
 
+	// Key value null checking. Returns true if it doesn't exist
 	if (cmdrData["commander"]["name"].is_null() != true)
 	{
 		wcsncpy_s(pg0.cmdrPage0Info[1], strToWStr(cmdrData["commander"]["name"]).c_str(), length);
@@ -168,6 +192,12 @@ void JSONDataStructure::setPage0(TCHAR *jsonFilepath)
 }
 
 /*
+	PARAMETERS: TCHAR *jsonFilepath -> location of the json file so the data can be read from it and stored locally to update on the controller
+	RETURNS: none
+
+	FUNCTION: Reads the json file and updates the relevant page information listed below. Uses null checking on the json file so if the current key value doesn't exist it won't crash upon trying to read a non existant key value.
+*/
+/*
 	Page 1 consists of:
 	Ship Details
 	(CURRENT_SHIP_NAME)
@@ -248,6 +278,12 @@ void JSONDataStructure::setPage1(TCHAR * jsonFilepath)
 }
 
 /*
+	PARAMETERS: TCHAR *jsonFilepath -> location of the json file so the data can be read from it and stored locally to update on the controller
+	RETURNS: none
+
+	FUNCTION: Reads the json file and updates the relevant page information listed below. Uses null checking on the json file so if the current key value doesn't exist it won't crash upon trying to read a non existant key value.
+*/
+/*
 	Page 2 consists of:
 	(CURRENT_SYSTEM)
 	(CURRENT_STATION) if possible
@@ -299,6 +335,12 @@ void JSONDataStructure::setPage2(TCHAR * jsonFilePath)
 	}
 }
 
+/*
+	PARAMETERS: TCHAR *jsonFilepath -> location of the json file so the data can be read from it and stored locally to update on the controller
+	RETURNS: none
+
+	FUNCTION: Reads the json file and updates the relevant page information listed below. Uses null checking on the json file so if the current key value doesn't exist it won't crash upon trying to read a non existant key value.
+*/
 /*
 	Page 3 consists of: FOR TOTAL AMOUNT OF SHIPS STATIONED
 	All Ships
@@ -359,7 +401,12 @@ void JSONDataStructure::setPage3(TCHAR * jsonFilePath)
 	}
 }
 
+/*
+	PARAMETERS: string str -> string value
+	RETURNS: wstring
 
+	FUNCTION: Takes a string value(from the json file) and converts it to a wstring. Upon returning from this function the wstring value will be copied into the relevant page array. Usually as a wchar_t since the printing function to the controller requires a wchar_t type.
+*/
 std::wstring JSONDataStructure::strToWStr(std::string str)
 {
 	wstring wStr = wstring(str.begin(), str.end());

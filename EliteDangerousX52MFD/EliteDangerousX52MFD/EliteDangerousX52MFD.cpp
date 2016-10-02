@@ -1,7 +1,7 @@
 // EliteDangerousX52MFD.cpp : Entry point
 
 /*
-	EliteDangerousX52MFD v 1.0
+	EliteDangerousX52MFD v 1.0.1
 	Special Thanks to:
 		Frontier for Elite Dangerous
 		Saitek for the use and development of the SDK to run this project
@@ -28,15 +28,18 @@ DirectOutputFn fn;
 // Accessor to JSON file
 JSONDataStructure jsonDataClass;
 
+// Text filepath holders
 TCHAR profileFilepath[260];
 TCHAR edceScriptFilepath[260];
 TCHAR edceJSONFilepath[260];
 TCHAR defaultDirectory[260];
 TCHAR edceDirectory[260];
 
+// Instance checking
 bool foundProfile = false;
 bool closeOnWindowX = false;
 
+// Global declaration of timer since the user can cancel before time has exired the timer value needs to be accessed by multiple functions
 int timer;
 
 // Internal Functions
@@ -51,7 +54,10 @@ BOOL controlHandler(DWORD fdwCtrlType);
 
 int main()
 {
-	// Setup control handling, if app is closed by other means
+	// Alert version number
+	cout << "EliteDangerousX52MFD  v 1.0.1\n";
+
+	// Setup control handling, if app is closed by other means. (Ctrl + C or hitting the 'X' button)
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE)controlHandler, TRUE);
 
 	// Initialize DirectOutput
@@ -96,6 +102,7 @@ int main()
 		}
 	}
 
+	// Check to see if the filepath for edce is available. If not, alert the user to delete the txt file and restart the application to input the required filepaths
 	if (edceDirectory[0] == _T('\0'))
 	{
 		cout << "Can't locate the edce directory. Please delete EDX52Settings.txt and restart the application.\n";
@@ -105,14 +112,8 @@ int main()
 		return 0;
 	}
 
+	// Program just started so inital line numbers need to be set in the JSONDataStructure file so the output can be viewed properly
 	jsonDataClass.isFirstTime = true;
-	jsonDataClass.readStoreJSON(edceDirectory, defaultDirectory, edceJSONFilepath);
-
-	fn.setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[0]);
-	fn.setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[1]);
-	fn.setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[2]);
-
-	jsonDataClass.isFirstTime = false;
 
 	// Main loop, run once per designated cooldown time
 	bool isEliteRunning = true;
@@ -120,6 +121,8 @@ int main()
 	do
 	{
 		contactEDCE();
+		
+		// Check to see if the Elite Dangerous launcher is still open, if not close this program. Also check if a control event was used and if detected close the program even if the launcher is still open.
 		if (FindWindow(NULL, appName) == NULL)
 		{
 			isEliteRunning = false;
@@ -131,6 +134,7 @@ int main()
 		system("cls");
 	} while (isEliteRunning);
 
+	// If no control event is detected and the launcher closed after the timer finished the user can manually close the application by tapping enter
 	if (closeOnWindowX == false)
 	{
 		cout << "\nPress enter to deinitialize, cleanup, and quit.\n";
@@ -163,6 +167,12 @@ void checkHR(HRESULT hr)
 	}
 }
 
+/*
+	PARAMETERS: none
+	RETURNS: none
+
+	FUNCTION: Looks for the existance of the text file in the project directory if it can't be found, prompt the user to select various file locations. Otherwise, load in the required filepaths
+*/
 void txtFileCheck()
 {
 	// Create .txt file for filepaths to
@@ -179,6 +189,7 @@ void txtFileCheck()
 		string line;
 		int lineNumber = 0;
 		size_t strSize;
+		// Load in each of the required filepaths per line
 		if (myFile.is_open())
 		{
 			while (getline(myFile, line))
@@ -244,6 +255,12 @@ void txtFileCheck()
 	}
 }
 
+/*
+	PARAMETERS: none
+	RETURNS: none
+
+	FUNCTION: Prompts the user to select the filepath corresponding to the profile location and the edce_client.py location
+*/
 void getFilepaths()
 {
 	// Get the current directory so it can be restored after the files have been found
@@ -306,6 +323,12 @@ void getFilepaths()
 	SetCurrentDirectory(defaultDirectory);
 }
 
+/*
+	PARAMETERS: none
+	RETURNS: none
+
+	FUNCTION: Creates the text file with the provided filepaths. Each path is separated by a new line so it can easily be read in the next time the application is run.
+*/
 void createTxtFile() {
 	// Create the txt file
 	cout << "Creating txt file...";
@@ -329,6 +352,12 @@ void createTxtFile() {
 }
 
 
+/*
+	PARAMETERS: bool isProfile -> situational awareness if the user is told to select the profile or the python scipt. The difference is required so only the desired file type is shown
+	RETURNS: bool value -> alerts the program if the filepaths are correct and can be opened successfully. Otherwise, the program will alert the user that the operation was cancelled or a filepath wasn't selected
+
+	FUNCTION: Prompts the user to select the required filepaths. The profile filepath for the HOTAS and the filepath of the edce_client.py python script
+*/
 bool getFilePathName(bool isProfile)
 {
 	OPENFILENAME ofn;
@@ -370,7 +399,12 @@ bool getFilePathName(bool isProfile)
 	}
 }
 
+/*
+	PARAMETERS: none
+	RETURNS: none
 
+	FUNCTION: Essentially the main loop that will run as long as the Elite Dangerous client is open. This will run the python script to retireve new information about the player. The JSON file will be read and the display on the controller will be updated.
+*/
 void contactEDCE()
 {
 	// Do this once a minute and then update pages with relevant data
@@ -385,13 +419,24 @@ void contactEDCE()
 
 	// Update information
 	jsonDataClass.readStoreJSON(edceDirectory, defaultDirectory, edceJSONFilepath);
+	
+	// Check to see if it is the first time accessed so the default page can be shown instead of a blank screen
+	if (jsonDataClass.isFirstTime)
+	{
+		fn.setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[0]);
+		fn.setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[1]);
+		fn.setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[2]);
+
+		jsonDataClass.isFirstTime = false;
+	}
+
 	jsonDataClass.updateCurrentPage(edceDirectory, defaultDirectory, edceJSONFilepath, fn);
 
 	// Wait for 2.5 minutes
 	cout << "Cooldown: 2.5 minutes\n";
 	using namespace std::this_thread;
 	using namespace std::chrono;
-	// Reset timer
+	// Reset timer, if a control event occurs the timer will be immediately exit and the program will close
 	timer = 150;
 	while (timer != 0)
 	{
@@ -402,6 +447,12 @@ void contactEDCE()
 	cout << endl;
 }
 
+/*
+	PARAMETERS: none
+	RETURNS: none
+
+	FUNCTION: Simplifies all cleanup into one function so the actions happen back to back allowing in easier exiting
+*/
 void cleanupAndClose() {
 	//Unregister the callbacks
 	checkHR(fn.unRegisterSoftBtnCallback());
@@ -411,12 +462,17 @@ void cleanupAndClose() {
 	checkHR(fn.Deinitialize());
 }
 
+/*
+	PARAMETERS: DWORD fdwCtrlType -> The type of action performed by the user on the console window or on system level
+	RETURNS: bool condition -> Will alert the program if a certain close event has occured, so proper cleanup can be done
+
+	FUNCTION: Case statements for determining the type of event invoked by the user on the console window
+*/
 BOOL controlHandler(DWORD fdwCtrlType) {
 	switch (fdwCtrlType)
 	{
 		// Handle the CTRL-C signal. 
 	case CTRL_C_EVENT:
-		cout << "Ctrl-C event\n\n";
 		closeOnWindowX = true;
 		cleanupAndClose();
 		timer = 1;
@@ -424,7 +480,6 @@ BOOL controlHandler(DWORD fdwCtrlType) {
 
 		// CTRL-CLOSE: confirm that the user wants to exit on 'X' button click on window. 
 	case CTRL_CLOSE_EVENT:
-		cout << "Ctrl-Close event\n\n";
 		closeOnWindowX = true;
 		cleanupAndClose();
 		timer = 1;
@@ -432,15 +487,12 @@ BOOL controlHandler(DWORD fdwCtrlType) {
 
 		// Pass other signals to the next handler. 
 	case CTRL_BREAK_EVENT:
-		cout << "Ctrl-Break event\n\n";
 		return FALSE;
 
 	case CTRL_LOGOFF_EVENT:
-		cout << "Ctrl-Logoff event\n\n";
 		return FALSE;
 
 	case CTRL_SHUTDOWN_EVENT:
-		cout << "Ctrl-Shutdown event\n\n";
 		return FALSE;
 
 	default:
