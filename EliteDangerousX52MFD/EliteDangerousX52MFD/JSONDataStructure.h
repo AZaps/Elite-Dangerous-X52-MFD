@@ -1,9 +1,12 @@
 #pragma once
+#include "DirectOutputFn.h"
 
 class JSONDataStructure
 {
-	
+	typedef std::vector<std::wstring> cmdrShipList;
 public:
+
+	bool isFirstTime;
 
 	struct mfdPage0
 	{
@@ -17,8 +20,17 @@ public:
 		wchar_t cmdrPage1Info[6][32];
 	}; mfdPage1 pg1;
 
-	// Will need one page as empty blank dummy since the controller defaults to having one on and it duplicates the last page
+	struct mfdPage2
+	{
+		wchar_t cmdrPage2Info[3][32];
+	}; mfdPage2 pg2;
 
+	struct mfdPage3
+	{
+		int currentLine;
+		int amountOfShips;
+		cmdrShipList cmdrPage3Info;
+	}; mfdPage3 pg3;
 
 	std::string combatRank[9] = {
 		"Harmless",
@@ -99,8 +111,8 @@ public:
 		"King"
 	};
 	
-
 	void readStoreJSON(TCHAR *jsonDirectory, TCHAR *defaultDirectory, TCHAR *jsonFilepath);
+	void updateCurrentPage(TCHAR *jsonDirectory, TCHAR *defaultDirectory, TCHAR *jsonFilepath, DirectOutputFn& fnJSON);
 
 private:
 	void setPage0(TCHAR *jsonFilepath);
@@ -111,3 +123,4 @@ private:
 };
 
 extern JSONDataStructure jsonDataClass;
+

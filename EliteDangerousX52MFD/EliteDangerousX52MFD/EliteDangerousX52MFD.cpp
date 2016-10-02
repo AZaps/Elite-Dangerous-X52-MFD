@@ -1,12 +1,12 @@
 // EliteDangerousX52MFD.cpp : Entry point
 
 /*
-	EliteDangerousX52MFD 
+	EliteDangerousX52MFD v 1.0
 	Special Thanks to:
 		Frontier for Elite Dangerous
 		Saitek for the use and development of the SDK to run this project
-		Andargor for the work on Elite Dangerous Companion Emulator (https://github.com/Andargor/edce-client)
-		Niels Lohmann for the work on JSON for Modern C++ (https://github.com/nlohmann/json)
+		Andargor for work on Elite Dangerous Companion Emulator (https://github.com/Andargor/edce-client)
+		Niels Lohmann for work on JSON for Modern C++ (https://github.com/nlohmann/json)
 */
 
 #include "stdafx.h"
@@ -35,6 +35,9 @@ TCHAR defaultDirectory[260];
 TCHAR edceDirectory[260];
 
 bool foundProfile = false;
+bool closeOnWindowX = false;
+
+int timer;
 
 // Internal Functions
 void checkHR(HRESULT hr);
@@ -43,9 +46,14 @@ void getFilepaths();
 void createTxtFile();
 bool getFilePathName(bool isProfile);
 void contactEDCE();
+void cleanupAndClose();
+BOOL controlHandler(DWORD fdwCtrlType);
 
 int main()
 {
+	// Setup control handling, if app is closed by other means
+	SetConsoleCtrlHandler((PHANDLER_ROUTINE)controlHandler, TRUE);
+
 	// Initialize DirectOutput
 	checkHR(fn.Initialize(L"EliteDangerousX52MFD"));
 
@@ -76,7 +84,7 @@ int main()
 	cout << "Setup Complete.\n\n";
 
 	// Add 5 pages
-	for (int i = 0; i < 6; i++)
+	for (int i = 0; i < 4; i++)
 	{
 		if (i == 0)
 		{
@@ -88,33 +96,47 @@ int main()
 		}
 	}
 
+	if (edceDirectory[0] == _T('\0'))
+	{
+		cout << "Can't locate the edce directory. Please delete EDX52Settings.txt and restart the application.\n";
+		cout << "\nPress enter to deinitialize, cleanup, and quit.\n";
+		cin.ignore(numeric_limits<streamsize>::max(), '\n');
+		cleanupAndClose();
+		return 0;
+	}
+
+	jsonDataClass.isFirstTime = true;
 	jsonDataClass.readStoreJSON(edceDirectory, defaultDirectory, edceJSONFilepath);
 
-	// Main loop, run once aa minute
-	/*bool isEliteRunning = true;
+	fn.setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[0]);
+	fn.setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[1]);
+	fn.setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[2]);
+
+	jsonDataClass.isFirstTime = false;
+
+	// Main loop, run once per designated cooldown time
+	bool isEliteRunning = true;
 	LPCTSTR appName = TEXT("Elite Dangerous Launcher");
 	do
 	{
 		contactEDCE();
-		// Update information if neccessary
-
 		if (FindWindow(NULL, appName) == NULL)
 		{
 			isEliteRunning = false;
 		}
+		if (closeOnWindowX)
+		{
+			isEliteRunning = false;
+		}
 		system("cls");
-	} while (isEliteRunning);*/
+	} while (isEliteRunning);
 
-	// Pause to check outputs
-	cout << "\nPress enter to deinitialize.\n";
-	cin.ignore(numeric_limits<streamsize>::max(), '\n');
-
-	//Unregister the callbacks
-	checkHR(fn.unRegisterSoftBtnCallback());
-	checkHR(fn.unRegisterPageCallback());
-
-	// Deinitialize DirectOutput
-	checkHR(fn.Deinitialize());
+	if (closeOnWindowX == false)
+	{
+		cout << "\nPress enter to deinitialize, cleanup, and quit.\n";
+		cin.ignore(numeric_limits<streamsize>::max(), '\n');
+		cleanupAndClose();
+	}
  
     return 0;
 }
@@ -123,7 +145,7 @@ int main()
 	PARAMETERS: HRESULT hr == some functions from DirectOutput return a HRESULT value, this just checks if it pass/fail and ouputs to the console
 	RETURNS: none
 
-	FUNCTION: Checks resulkt of the function if it returns an HRESULT value
+	FUNCTION: Checks result of the function if it returns an HRESULT value
 
 	Read more about HRESULT return types at
 	Microsoft (MSDN) -> https://msdn.microsoft.com/en-us/library/windows/desktop/aa378137(v=vs.85).aspx
@@ -357,11 +379,20 @@ void contactEDCE()
 	
 	// Run the script
 	_wsystem(edceScriptFilepath);
-	cout << "Cooldown: 2.5 minutes\n";
+
+	// Restore working directory
+	SetCurrentDirectory(defaultDirectory);
+
+	// Update information
+	jsonDataClass.readStoreJSON(edceDirectory, defaultDirectory, edceJSONFilepath);
+	jsonDataClass.updateCurrentPage(edceDirectory, defaultDirectory, edceJSONFilepath, fn);
+
 	// Wait for 2.5 minutes
+	cout << "Cooldown: 2.5 minutes\n";
 	using namespace std::this_thread;
 	using namespace std::chrono;
-	int timer = 150;
+	// Reset timer
+	timer = 150;
 	while (timer != 0)
 	{
 		sleep_until(system_clock::now() + 1s);
@@ -369,7 +400,50 @@ void contactEDCE()
 		cout << timer << "..";
 	}
 	cout << endl;
+}
 
-	// Restore working directory
-	SetCurrentDirectory(defaultDirectory);
+void cleanupAndClose() {
+	//Unregister the callbacks
+	checkHR(fn.unRegisterSoftBtnCallback());
+	checkHR(fn.unRegisterPageCallback());
+
+	// Deinitialize DirectOutput
+	checkHR(fn.Deinitialize());
+}
+
+BOOL controlHandler(DWORD fdwCtrlType) {
+	switch (fdwCtrlType)
+	{
+		// Handle the CTRL-C signal. 
+	case CTRL_C_EVENT:
+		cout << "Ctrl-C event\n\n";
+		closeOnWindowX = true;
+		cleanupAndClose();
+		timer = 1;
+		return(TRUE);
+
+		// CTRL-CLOSE: confirm that the user wants to exit on 'X' button click on window. 
+	case CTRL_CLOSE_EVENT:
+		cout << "Ctrl-Close event\n\n";
+		closeOnWindowX = true;
+		cleanupAndClose();
+		timer = 1;
+		return(TRUE);
+
+		// Pass other signals to the next handler. 
+	case CTRL_BREAK_EVENT:
+		cout << "Ctrl-Break event\n\n";
+		return FALSE;
+
+	case CTRL_LOGOFF_EVENT:
+		cout << "Ctrl-Logoff event\n\n";
+		return FALSE;
+
+	case CTRL_SHUTDOWN_EVENT:
+		cout << "Ctrl-Shutdown event\n\n";
+		return FALSE;
+
+	default:
+		return FALSE;
+	}
 }

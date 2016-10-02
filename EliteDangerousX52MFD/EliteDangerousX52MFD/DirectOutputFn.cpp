@@ -11,7 +11,7 @@ DirectOutputFn::DirectOutputFn()
 	cout << "Created DirectOutputFn constructor.\n";
 	cout << "Loading DirectOutput libaray... ";
 
-	dll = LoadLibrary(TEXT("../DirectOutput.dll"));
+	dll = LoadLibrary(TEXT("DepInclude/DirectOutput.dll"));
 	if (NULL != dll)
 	{
 		cout << "DONE.\n";
@@ -34,10 +34,6 @@ DirectOutputFn::~DirectOutputFn()
 	{
 		cout << "DONE.\n";
 	}
-
-	cout << "Removed DirectOutputFn constructor.\n";
-	cout << "Press enter to quit...";
-	cin.ignore(numeric_limits<streamsize>::max(), '\n');
 }
 
 // Public Functions
@@ -281,16 +277,21 @@ void DirectOutputFn::handlePageChange()
 		setString(1, 2, jsonDataClass.pg1.cmdrPage1Info[2]);
 		break;
 	case 2:
-		setString(2, 2, TEXT("Page 2"));
+		setString(2, 0, jsonDataClass.pg2.cmdrPage2Info[0]);
+		setString(2, 1, jsonDataClass.pg2.cmdrPage2Info[1]);
+		setString(2, 2, jsonDataClass.pg2.cmdrPage2Info[2]);
 		break;
 	case 3:
-		setString(3, 0, TEXT("Page 3"));
+		wchar_t str0[32];
+		wchar_t str1[32];
+		wchar_t str2[32];
+		wcsncpy_s(str0, jsonDataClass.pg3.cmdrPage3Info.at(0).c_str(), 32);
+		wcsncpy_s(str1, jsonDataClass.pg3.cmdrPage3Info.at(1).c_str(), 32);
+		wcsncpy_s(str2, jsonDataClass.pg3.cmdrPage3Info.at(2).c_str(), 32);
+		setString(3, 0, str0);
+		setString(3, 1, str1);
+		setString(3, 2, str2);
 		break;
-	case 4:
-		setString(4, 0, TEXT("Page 4"));
-		break;
-	case 5:
-		setString(5, 0, TEXT("Page 5"));
 	default:
 		break;
 	}
@@ -403,6 +404,7 @@ void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
 			break;
 		}
 		break;
+
 	case 1:
 		if (oneUpZeroDown == 1)
 		{
@@ -439,6 +441,54 @@ void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
 			break;
 		}
 		break;
+
+	case 2:
+		// No need to do any scrolling since there is only three lines needed
+		break;
+
+	case 3:
+		wchar_t str0[32];
+		wchar_t str1[32];
+		wchar_t str2[32];
+		if (oneUpZeroDown == 1)
+		{
+			jsonDataClass.pg3.currentLine--;
+			if (jsonDataClass.pg3.currentLine < 0)
+			{
+				jsonDataClass.pg3.currentLine = (jsonDataClass.pg3.amountOfShips * 3) - 1;
+			}
+		}
+		else if (oneUpZeroDown == 0)
+		{
+			jsonDataClass.pg3.currentLine++;
+			if (jsonDataClass.pg3.currentLine == (jsonDataClass.pg3.amountOfShips * 3))
+			{
+				jsonDataClass.pg3.currentLine = 0;
+			}
+		}
+		if (jsonDataClass.pg3.currentLine == ((jsonDataClass.pg3.amountOfShips * 3) - 2))
+		{
+			wcsncpy_s(str0, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine).c_str(), 32);
+			wcsncpy_s(str1, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine + 1).c_str(), 32);
+			wcsncpy_s(str2, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine - ((jsonDataClass.pg3.amountOfShips * 3) - 2)).c_str(), 32);
+		}
+		else if (jsonDataClass.pg3.currentLine == ((jsonDataClass.pg3.amountOfShips * 3) - 1))
+		{
+			wcsncpy_s(str0, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine).c_str(), 32);
+			wcsncpy_s(str1, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine - ((jsonDataClass.pg3.amountOfShips * 3) - 1)).c_str(), 32);
+			wcsncpy_s(str2, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine - ((jsonDataClass.pg3.amountOfShips * 3) - 2)).c_str(), 32);
+		}
+		else
+		{
+			wcsncpy_s(str0, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine).c_str(), 32);
+			wcsncpy_s(str1, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine + 1).c_str(), 32);
+			wcsncpy_s(str2, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine + 2).c_str(), 32);
+		}
+		setString(3, 0, str0);
+		setString(3, 1, str1);
+		setString(3, 2, str2);
+		break;
+
 	default:
 		break;
 	}
