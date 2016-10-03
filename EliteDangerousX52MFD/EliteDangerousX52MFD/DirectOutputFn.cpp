@@ -267,30 +267,16 @@ void DirectOutputFn::handlePageChange()
 	switch (currentPage)
 	{
 	case 0:
-		setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[0]);
-		setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[1]);
-		setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[2]);
+		updatePage(0);
 		break;
 	case 1:
-		setString(1, 0, jsonDataClass.pg1.cmdrPage1Info[0]);
-		setString(1, 1, jsonDataClass.pg1.cmdrPage1Info[1]);
-		setString(1, 2, jsonDataClass.pg1.cmdrPage1Info[2]);
+		updatePage(1);
 		break;
 	case 2:
-		setString(2, 0, jsonDataClass.pg2.cmdrPage2Info[0]);
-		setString(2, 1, jsonDataClass.pg2.cmdrPage2Info[1]);
-		setString(2, 2, jsonDataClass.pg2.cmdrPage2Info[2]);
+		updatePage(2);
 		break;
 	case 3:
-		wchar_t str0[32];
-		wchar_t str1[32];
-		wchar_t str2[32];
-		wcsncpy_s(str0, jsonDataClass.pg3.cmdrPage3Info.at(0).c_str(), 32);
-		wcsncpy_s(str1, jsonDataClass.pg3.cmdrPage3Info.at(1).c_str(), 32);
-		wcsncpy_s(str2, jsonDataClass.pg3.cmdrPage3Info.at(2).c_str(), 32);
-		setString(3, 0, str0);
-		setString(3, 1, str1);
-		setString(3, 2, str2);
+		updatePage(3);
 		break;
 	default:
 		break;
@@ -387,24 +373,7 @@ void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
 				jsonDataClass.pg0.currentLine = 0;
 			}
 		}
-		switch (jsonDataClass.pg0.currentLine)
-		{
-		case 8:
-			setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine]);
-			setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine + 1]);
-			setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine - 8]);
-			break;
-		case 9:
-			setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine]);
-			setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine - 9]);
-			setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine - 8]);
-			break;
-		default:
-			setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine]);
-			setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine + 1]);
-			setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine + 2]);
-			break;
-		}
+		updatePage(0);
 		break;
 
 	case 1:
@@ -424,6 +393,69 @@ void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
 				jsonDataClass.pg1.currentLine = 0;
 			}
 		}
+		updatePage(1);
+		break;
+
+	case 2:
+		// No need to do any scrolling since there is only three lines needed
+		break;
+
+	case 3:
+		if (oneUpZeroDown == 1)
+		{
+			jsonDataClass.pg3.currentLine--;
+			if (jsonDataClass.pg3.currentLine < 0)
+			{
+				jsonDataClass.pg3.currentLine = (jsonDataClass.pg3.amountOfShips * 3) - 1;
+			}
+		}
+		else if (oneUpZeroDown == 0)
+		{
+			jsonDataClass.pg3.currentLine++;
+			if (jsonDataClass.pg3.currentLine == (jsonDataClass.pg3.amountOfShips * 3))
+			{
+				jsonDataClass.pg3.currentLine = 0;
+			}
+		}
+		updatePage(3);
+		break;
+
+	default:
+		break;
+	}
+}
+
+/*
+	PARAMETERS: int pageNumber -> corresponds to the page that needs to be rewritten
+	RETURNS: none
+
+	FUNCTION: Rewrites the data on the selected screen, keeps scroll position between pages and usually used after retrieving new information.
+*/
+void DirectOutputFn::updatePage(int pageNumber)
+{
+	switch (pageNumber)
+	{
+	case 0:
+		switch (jsonDataClass.pg0.currentLine)
+		{
+		case 8:
+			setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine]);
+			setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine + 1]);
+			setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine - 8]);
+			break;
+		case 9:
+			setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine]);
+			setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine - 9]);
+			setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine - 8]);
+			break;
+		default:
+			setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine]);
+			setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine + 1]);
+			setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[jsonDataClass.pg0.currentLine + 2]);
+			break;
+		}
+		break;
+	case 1:
 		switch (jsonDataClass.pg1.currentLine)
 		{
 		case 4:
@@ -443,31 +475,15 @@ void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
 			break;
 		}
 		break;
-
 	case 2:
-		// No need to do any scrolling since there is only three lines needed
+		setString(2, 0, jsonDataClass.pg2.cmdrPage2Info[0]);
+		setString(2, 1, jsonDataClass.pg2.cmdrPage2Info[1]);
+		setString(2, 2, jsonDataClass.pg2.cmdrPage2Info[2]);
 		break;
-
 	case 3:
 		wchar_t str0[32];
 		wchar_t str1[32];
 		wchar_t str2[32];
-		if (oneUpZeroDown == 1)
-		{
-			jsonDataClass.pg3.currentLine--;
-			if (jsonDataClass.pg3.currentLine < 0)
-			{
-				jsonDataClass.pg3.currentLine = (jsonDataClass.pg3.amountOfShips * 3) - 1;
-			}
-		}
-		else if (oneUpZeroDown == 0)
-		{
-			jsonDataClass.pg3.currentLine++;
-			if (jsonDataClass.pg3.currentLine == (jsonDataClass.pg3.amountOfShips * 3))
-			{
-				jsonDataClass.pg3.currentLine = 0;
-			}
-		}
 		if (jsonDataClass.pg3.currentLine == ((jsonDataClass.pg3.amountOfShips * 3) - 2))
 		{
 			wcsncpy_s(str0, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine).c_str(), 32);
@@ -490,7 +506,6 @@ void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
 		setString(3, 1, str1);
 		setString(3, 2, str2);
 		break;
-
 	default:
 		break;
 	}
