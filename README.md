@@ -47,7 +47,7 @@ So if you do change any of the locations of those files, just delete the EDX52Se
 
 As a request from Frontier, and also built into EDCE, there needs to be a delay in accessing your data from their servers. I have set a timer of 2 1/2 minutes in the app between fetching. There is also a chance that when EDCE goes out to pull fresh info, the Elite servers might have not updated yet so there is a chance for a longer delay.
 
-This app will continue to run as long as the Elite Dangerous launcher is open. It can still be closed normally by tapping the X or by clicking in the console window and pressing 'Ctrl + C'. Also, if the console window is clicked it will pause itself because it is waiting for input so, for it to continue functioning, either click the top banner of the window or just hit the Esc key.
+This app will continue to run as long as the Elite Dangerous launcher is open. It can still be closed normally by tapping the X or by clicking in the console window and pressing 'Ctrl + C'. Also, if the console window is clicked it will pause itself because it is waiting for input so, for it to continue functioning, hit the Esc key.
 
 ### Thanks
 Frontier Developments for Elite Dangerous
