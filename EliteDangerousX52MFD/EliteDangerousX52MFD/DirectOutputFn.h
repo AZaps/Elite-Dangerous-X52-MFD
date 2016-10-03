@@ -34,5 +34,5 @@ private:
 	static void __stdcall OnPageChanged(void* hDevice, DWORD dwPage, bool bSetActive, void* pCtxt);
 	static void __stdcall OnSoftButtonChanged(void* hDevice, DWORD dwButtons, void* pCtxt);
 	void updatePageOnScroll(int oneUpZeroDown);
+	void updatePage(int pageNumber);
 };
-

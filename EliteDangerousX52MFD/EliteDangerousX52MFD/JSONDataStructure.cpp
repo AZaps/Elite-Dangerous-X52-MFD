@@ -46,14 +46,44 @@ void JSONDataStructure::updateCurrentPage(TCHAR *jsonDirectory, TCHAR *defaultDi
 	switch (currentPage)
 	{
 	case 0:
-		fnJSON.setString(0, 0, pg0.cmdrPage0Info[pg0.currentLine]);
-		fnJSON.setString(0, 1, pg0.cmdrPage0Info[pg0.currentLine + 1]);
-		fnJSON.setString(0, 2, pg0.cmdrPage0Info[pg0.currentLine + 2]);
+		switch (pg0.currentLine)
+		{
+		case 8:
+			fnJSON.setString(0, 0, pg0.cmdrPage0Info[pg0.currentLine]);
+			fnJSON.setString(0, 1, pg0.cmdrPage0Info[pg0.currentLine + 1]);
+			fnJSON.setString(0, 2, pg0.cmdrPage0Info[pg0.currentLine - 8]);
+			break;
+		case 9:
+			fnJSON.setString(0, 0, pg0.cmdrPage0Info[pg0.currentLine]);
+			fnJSON.setString(0, 1, pg0.cmdrPage0Info[pg0.currentLine - 9]);
+			fnJSON.setString(0, 2, pg0.cmdrPage0Info[pg0.currentLine - 8]);
+			break;
+		default:
+			fnJSON.setString(0, 0, pg0.cmdrPage0Info[pg0.currentLine]);
+			fnJSON.setString(0, 1, pg0.cmdrPage0Info[pg0.currentLine + 1]);
+			fnJSON.setString(0, 2, pg0.cmdrPage0Info[pg0.currentLine + 2]);
+			break;
+		}
 		break;
 	case 1:
-		fnJSON.setString(1, 0, pg1.cmdrPage1Info[pg1.currentLine]);
-		fnJSON.setString(1, 1, pg1.cmdrPage1Info[pg1.currentLine + 1]);
-		fnJSON.setString(1, 2, pg1.cmdrPage1Info[pg1.currentLine + 2]);
+		switch (pg1.currentLine)
+		{
+		case 4:
+			fnJSON.setString(1, 0, pg1.cmdrPage1Info[pg1.currentLine]);
+			fnJSON.setString(1, 1, pg1.cmdrPage1Info[pg1.currentLine + 1]);
+			fnJSON.setString(1, 2, pg1.cmdrPage1Info[pg1.currentLine - 4]);
+			break;
+		case 5:
+			fnJSON.setString(1, 0, pg1.cmdrPage1Info[pg1.currentLine]);
+			fnJSON.setString(1, 1, pg1.cmdrPage1Info[pg1.currentLine - 5]);
+			fnJSON.setString(1, 2, pg1.cmdrPage1Info[pg1.currentLine - 4]);
+			break;
+		default:
+			fnJSON.setString(1, 0, pg1.cmdrPage1Info[pg1.currentLine]);
+			fnJSON.setString(1, 1, pg1.cmdrPage1Info[pg1.currentLine + 1]);
+			fnJSON.setString(1, 2, pg1.cmdrPage1Info[pg1.currentLine + 2]);
+			break;
+		}
 		break;
 	case 2:
 		fnJSON.setString(2, 0, pg2.cmdrPage2Info[0]);
@@ -64,9 +94,24 @@ void JSONDataStructure::updateCurrentPage(TCHAR *jsonDirectory, TCHAR *defaultDi
 		wchar_t str0[32];
 		wchar_t str1[32];
 		wchar_t str2[32];
-		wcsncpy_s(str0, pg3.cmdrPage3Info.at(pg3.currentLine).c_str(), 32);
-		wcsncpy_s(str1, pg3.cmdrPage3Info.at(pg3.currentLine + 1).c_str(), 32);
-		wcsncpy_s(str2, pg3.cmdrPage3Info.at(pg3.currentLine + 2).c_str(), 32);
+		if (pg3.currentLine == ((pg3.amountOfShips * 3) - 2))
+		{
+			wcsncpy_s(str0, pg3.cmdrPage3Info.at(pg3.currentLine).c_str(), 32);
+			wcsncpy_s(str1, pg3.cmdrPage3Info.at(pg3.currentLine + 1).c_str(), 32);
+			wcsncpy_s(str2, pg3.cmdrPage3Info.at(pg3.currentLine - ((pg3.amountOfShips * 3) - 2)).c_str(), 32);
+		}
+		else if (pg3.currentLine == ((pg3.amountOfShips * 3) - 1))
+		{
+			wcsncpy_s(str0, pg3.cmdrPage3Info.at(pg3.currentLine).c_str(), 32);
+			wcsncpy_s(str1, pg3.cmdrPage3Info.at(pg3.currentLine - ((pg3.amountOfShips * 3) - 1)).c_str(), 32);
+			wcsncpy_s(str2, pg3.cmdrPage3Info.at(pg3.currentLine - ((pg3.amountOfShips * 3) - 2)).c_str(), 32);
+		}
+		else
+		{
+			wcsncpy_s(str0, pg3.cmdrPage3Info.at(pg3.currentLine).c_str(), 32);
+			wcsncpy_s(str1, pg3.cmdrPage3Info.at(pg3.currentLine + 1).c_str(), 32);
+			wcsncpy_s(str2, pg3.cmdrPage3Info.at(pg3.currentLine + 2).c_str(), 32);
+		}
 		fnJSON.setString(3, 0, str0);
 		fnJSON.setString(3, 1, str1);
 		fnJSON.setString(3, 2, str2);
