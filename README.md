@@ -26,7 +26,6 @@ This program will pull your CMDR data from the Frontier Elite Dangerous servers 
 #### Page 2
 * (CURRENT_SYSTEM)
 * (CURRENT_STATION) if possible
-* (CURRENT_PLANET) if landed on one and not on station
 
 #### Page 3
 * Docked Ships
