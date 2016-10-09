@@ -201,7 +201,7 @@ void JSONDataStructure::setPage0(TCHAR *jsonFilepath)
 
 	if (cmdrData["commander"]["rank"]["explore"].is_null() != true)
 	{
-		wcsncpy_s(pg0.cmdrPage0Info[6], strToWStr("Exploration: " + explorerRank[cmdrData["commander"]["rank"]["explore"]]).c_str(), length);
+		wcsncpy_s(pg0.cmdrPage0Info[6], strToWStr("Ex: " + explorerRank[cmdrData["commander"]["rank"]["explore"]]).c_str(), length);
 	}
 	else
 	{
@@ -219,7 +219,7 @@ void JSONDataStructure::setPage0(TCHAR *jsonFilepath)
 
 	if (cmdrData["commander"]["rank"]["federation"].is_null() != true)
 	{
-		wcsncpy_s(pg0.cmdrPage0Info[8], strToWStr("Federation: " + federationRank[cmdrData["commander"]["rank"]["federation"]]).c_str(), length);
+		wcsncpy_s(pg0.cmdrPage0Info[8], strToWStr("Fed: " + federationRank[cmdrData["commander"]["rank"]["federation"]]).c_str(), length);
 	}
 	else
 	{
