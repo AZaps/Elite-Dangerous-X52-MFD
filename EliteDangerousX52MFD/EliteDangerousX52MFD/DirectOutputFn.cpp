@@ -8,7 +8,6 @@ using namespace std;
 // Constructor -> Loads in DirectOutput.dll
 DirectOutputFn::DirectOutputFn()
 {
-	cout << "Created DirectOutputFn constructor.\n";
 	cout << "Loading DirectOutput libaray... ";
 
 	dll = LoadLibrary(TEXT("DepInclude/DirectOutput.dll"));
@@ -50,7 +49,7 @@ HRESULT DirectOutputFn::Initialize(const wchar_t * wszPluginName)
 
 	Pfn_DirectOutput_Initialize initDOFn = (Pfn_DirectOutput_Initialize)GetProcAddress(dll, "DirectOutput_Initialize");
 	hr = initDOFn(wszPluginName);
-	
+
 	return hr;
 }
 
@@ -129,7 +128,7 @@ void DirectOutputFn::GetDeviceType()
 }
 
 /*
-	PARAMETERS: wchar_t* filepath == full pathname to the desired profile 
+	PARAMETERS: wchar_t* filepath == full pathname to the desired profile
 	RETURNS: HRESULT hr == status indicator to determine if passed
 
 	FUNCTION: Sets the X52 Pro to the desired profile. This might be unneccessary as I will only be using the screen functions at the moment and not changing any keybindings or lights
@@ -166,14 +165,14 @@ HRESULT DirectOutputFn::setPage(int pageNumber, const DWORD flag)
 
 /*
 	PARAMETERS: int pageNumber == pageNumber to set the string on
-			int stringLineID == line on the MFD to display the string 
+			int stringLineID == line on the MFD to display the string
 								0 -> line1
 								1 -> line2
 								2 -> line3
 			wchar_t* stringToOutput == string to display on the MFD
 	RETURNS: HRESULT hr == status indicator to determine if passed.
 
-	FUNCTION: Sends a string to the MFD depending on the page and linenumber. 
+	FUNCTION: Sends a string to the MFD depending on the page and linenumber.
 				** I can't seem to figure out how to add strings on non-active pages, so strings have to be set on the active page
 */
 HRESULT DirectOutputFn::setString(int pageNumber, int stringLineID, wchar_t * stringToOutput)
@@ -258,8 +257,8 @@ int DirectOutputFn::getCurrentPage()
 	RETURNS: none
 
 	FUNCTION: This function prints out the selected string based on the predefined page limits in the EliteDangerousX52MFD.cpp. It is not hardcoded only something I selected, I am not sure the hard limit of the device yet.
-			So far this is neccessary since I cannot yet figure out why strings can't be set on inactive created pages, I always return an error. 
-			Also, the defualt profile page cannot be removed so there will always be an extra page that cannot be removed.
+			So far this is neccessary since I cannot yet figure out why strings can't be set on inactive created pages, it always returns an error.
+			Also, the default profile page cannot be removed so there will always be an extra page that is designated for displaying the mode name, current button selected, and profile name.
 			Plus reprinting the same string too fast causes the display to crash...
 */
 void DirectOutputFn::handlePageChange()
@@ -274,9 +273,6 @@ void DirectOutputFn::handlePageChange()
 		break;
 	case 2:
 		updatePage(2);
-		break;
-	case 3:
-		updatePage(3);
 		break;
 	default:
 		break;
@@ -335,12 +331,10 @@ void __stdcall DirectOutputFn::OnSoftButtonChanged(void * hDevice, DWORD dwButto
 	DirectOutputFn* pThis = (DirectOutputFn*)pCtxt;
 	if (dwButtons & 0x00000002)
 	{
-		++pThis->m_scrollpos;
 		pThis->updatePageOnScroll(1);
 	}
 	else if (dwButtons & 0x0000004)
 	{
-		--pThis->m_scrollpos;
 		pThis->updatePageOnScroll(0);
 	}
 }
@@ -349,7 +343,7 @@ void __stdcall DirectOutputFn::OnSoftButtonChanged(void * hDevice, DWORD dwButto
 	PARAMETERS: int oneUpZeroDown -> int value to determine if the user wants to scroll down or up. Value of 1 will scroll up, value of zero will scroll down.
 	RETURNS: none
 
-	FUNCTION: Updates the current page based on the scroll function of the right wheel. A value of 1 passed in will change the strings presented from 1,2,3 to 0,1,2. A value of 0 passed in will scroll down 0,1,2 to 1,2,3. This behavior replicated a scroll wheel on the mouse.
+	FUNCTION: Updates the current page based on the scroll function of the right wheel. A value of 1 passed in will change the strings presented from 1,2,3 to 0,1,2. A value of 0 passed in will scroll down 0,1,2 to 1,2,3. This behavior replicates a scroll wheel on the mouse.
 				Needs to be on a page by page case switch since each is independent.
 */
 void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
@@ -377,47 +371,49 @@ void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
 		break;
 
 	case 1:
-		if (oneUpZeroDown == 1)
+		if (jsonDataClass.pg1.cmdrPage1Info.size() > 3)
 		{
-			jsonDataClass.pg1.currentLine--;
-			if (jsonDataClass.pg1.currentLine < 0)
+			if (oneUpZeroDown == 1)
 			{
-				jsonDataClass.pg1.currentLine = 5;
+				jsonDataClass.pg1.currentLine--;
+				if (jsonDataClass.pg1.currentLine < 0)
+				{
+					jsonDataClass.pg1.currentLine = jsonDataClass.pg1.cmdrPage1Info.size() - 1;
+				}
 			}
-		}
-		else if (oneUpZeroDown == 0)
-		{
-			jsonDataClass.pg1.currentLine++;
-			if (jsonDataClass.pg1.currentLine == 6)
+			else if (oneUpZeroDown == 0)
 			{
-				jsonDataClass.pg1.currentLine = 0;
+				jsonDataClass.pg1.currentLine++;
+				if (jsonDataClass.pg1.currentLine == jsonDataClass.pg1.cmdrPage1Info.size())
+				{
+					jsonDataClass.pg1.currentLine = 0;
+				}
 			}
+			updatePage(1);
 		}
-		updatePage(1);
 		break;
 
 	case 2:
-		// No need to do any scrolling since there is only three lines needed
-		break;
-
-	case 3:
-		if (oneUpZeroDown == 1)
+		if (jsonDataClass.pg2.cmdrPage2Info.size() > 3)
 		{
-			jsonDataClass.pg3.currentLine--;
-			if (jsonDataClass.pg3.currentLine < 0)
+			if (oneUpZeroDown == 1)
 			{
-				jsonDataClass.pg3.currentLine = (jsonDataClass.pg3.amountOfShips * 3) - 1;
+				jsonDataClass.pg2.currentLine--;
+				if (jsonDataClass.pg2.currentLine < 0)
+				{
+					jsonDataClass.pg2.currentLine = jsonDataClass.pg2.cmdrPage2Info.size() - 1;
+				}
 			}
-		}
-		else if (oneUpZeroDown == 0)
-		{
-			jsonDataClass.pg3.currentLine++;
-			if (jsonDataClass.pg3.currentLine == (jsonDataClass.pg3.amountOfShips * 3))
+			else if (oneUpZeroDown == 0)
 			{
-				jsonDataClass.pg3.currentLine = 0;
+				jsonDataClass.pg2.currentLine++;
+				if (jsonDataClass.pg2.currentLine == jsonDataClass.pg2.cmdrPage2Info.size())
+				{
+					jsonDataClass.pg2.currentLine = 0;
+				}
 			}
+			updatePage(2);
 		}
-		updatePage(3);
 		break;
 
 	default:
@@ -433,6 +429,10 @@ void DirectOutputFn::updatePageOnScroll(int oneUpZeroDown)
 */
 void DirectOutputFn::updatePage(int pageNumber)
 {
+	int length = 64;
+	wchar_t str0[64];
+	wchar_t str1[64];
+	wchar_t str2[64];
 	switch (pageNumber)
 	{
 	case 0:
@@ -456,55 +456,97 @@ void DirectOutputFn::updatePage(int pageNumber)
 		}
 		break;
 	case 1:
-		switch (jsonDataClass.pg1.currentLine)
+		if (jsonDataClass.pg1.cmdrPage1Info.size() != 0)
 		{
-		case 4:
-			setString(1, 0, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine]);
-			setString(1, 1, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine + 1]);
-			setString(1, 2, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine - 4]);
-			break;
-		case 5:
-			setString(1, 0, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine]);
-			setString(1, 1, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine - 5]);
-			setString(1, 2, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine - 4]);
-			break;
-		default:
-			setString(1, 0, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine]);
-			setString(1, 1, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine + 1]);
-			setString(1, 2, jsonDataClass.pg1.cmdrPage1Info[jsonDataClass.pg1.currentLine + 2]);
-			break;
+			int vectorSize = jsonDataClass.pg1.cmdrPage1Info.size();
+			if (vectorSize == 1)
+			{
+				wcsncpy_s(str0, jsonDataClass.pg1.cmdrPage1Info.at(jsonDataClass.pg1.currentLine).c_str(), length);
+				str1[0] = '\0';
+				str2[0] = '\0';
+			}
+			else if (vectorSize == 2)
+			{
+				wcsncpy_s(str0, jsonDataClass.pg1.cmdrPage1Info.at(jsonDataClass.pg1.currentLine).c_str(), length);
+				wcsncpy_s(str1, jsonDataClass.pg1.cmdrPage1Info.at(jsonDataClass.pg1.currentLine + 1).c_str(), length);
+				str2[0] = '\0';
+			}
+			else if (vectorSize == 3)
+			{
+				wcsncpy_s(str0, jsonDataClass.pg1.cmdrPage1Info.at(jsonDataClass.pg1.currentLine).c_str(), length);
+				wcsncpy_s(str1, jsonDataClass.pg1.cmdrPage1Info.at(jsonDataClass.pg1.currentLine + 1).c_str(), length);
+				wcsncpy_s(str2, jsonDataClass.pg1.cmdrPage1Info.at(jsonDataClass.pg1.currentLine + 2).c_str(), length);
+			}
+			else
+			{
+				int lineNumber = jsonDataClass.pg1.currentLine;
+				wcsncpy_s(str0, jsonDataClass.pg1.cmdrPage1Info.at(lineNumber).c_str(), length);
+				lineNumber++;
+				if (lineNumber == jsonDataClass.pg1.cmdrPage1Info.size())
+				{
+					lineNumber = 0;
+				}
+				wcsncpy_s(str1, jsonDataClass.pg1.cmdrPage1Info.at(lineNumber).c_str(), length);
+				lineNumber++;
+				if (lineNumber == jsonDataClass.pg1.cmdrPage1Info.size())
+				{
+					lineNumber = 0;
+				}
+				wcsncpy_s(str2, jsonDataClass.pg1.cmdrPage1Info.at(lineNumber).c_str(), length);
+			}
+			setString(1, 0, str0);
+			setString(1, 1, str1);
+			setString(1, 2, str2);
 		}
 		break;
 	case 2:
-		setString(2, 0, jsonDataClass.pg2.cmdrPage2Info[0]);
-		setString(2, 1, jsonDataClass.pg2.cmdrPage2Info[1]);
-		setString(2, 2, jsonDataClass.pg2.cmdrPage2Info[2]);
-		break;
-	case 3:
-		wchar_t str0[32];
-		wchar_t str1[32];
-		wchar_t str2[32];
-		if (jsonDataClass.pg3.currentLine == ((jsonDataClass.pg3.amountOfShips * 3) - 2))
+		if (jsonDataClass.pg2.cmdrPage2Info.size() != 0)
 		{
-			wcsncpy_s(str0, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine).c_str(), 32);
-			wcsncpy_s(str1, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine + 1).c_str(), 32);
-			wcsncpy_s(str2, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine - ((jsonDataClass.pg3.amountOfShips * 3) - 2)).c_str(), 32);
-		}
-		else if (jsonDataClass.pg3.currentLine == ((jsonDataClass.pg3.amountOfShips * 3) - 1))
-		{
-			wcsncpy_s(str0, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine).c_str(), 32);
-			wcsncpy_s(str1, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine - ((jsonDataClass.pg3.amountOfShips * 3) - 1)).c_str(), 32);
-			wcsncpy_s(str2, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine - ((jsonDataClass.pg3.amountOfShips * 3) - 2)).c_str(), 32);
+			int vectorSize = jsonDataClass.pg2.cmdrPage2Info.size();
+			if (vectorSize == 1)
+			{
+				wcsncpy_s(str0, jsonDataClass.pg2.cmdrPage2Info.at(jsonDataClass.pg2.currentLine).c_str(), length);
+				str1[0] = '\0';
+				str2[0] = '\0';
+			}
+			else if (vectorSize == 2)
+			{
+				wcsncpy_s(str0, jsonDataClass.pg2.cmdrPage2Info.at(jsonDataClass.pg2.currentLine).c_str(), length);
+				wcsncpy_s(str1, jsonDataClass.pg2.cmdrPage2Info.at(jsonDataClass.pg2.currentLine + 1).c_str(), length);
+				str2[0] = '\0';
+			}
+			else if (vectorSize == 3)
+			{
+				wcsncpy_s(str0, jsonDataClass.pg2.cmdrPage2Info.at(jsonDataClass.pg2.currentLine).c_str(), length);
+				wcsncpy_s(str1, jsonDataClass.pg2.cmdrPage2Info.at(jsonDataClass.pg2.currentLine + 1).c_str(), length);
+				wcsncpy_s(str2, jsonDataClass.pg2.cmdrPage2Info.at(jsonDataClass.pg2.currentLine + 2).c_str(), length);
+			}
+			else
+			{
+				int lineNumber = jsonDataClass.pg2.currentLine;
+				wcsncpy_s(str0, jsonDataClass.pg2.cmdrPage2Info.at(lineNumber).c_str(), length);
+				lineNumber++;
+				if (lineNumber == jsonDataClass.pg2.cmdrPage2Info.size())
+				{
+					lineNumber = 0;
+				}
+				wcsncpy_s(str1, jsonDataClass.pg2.cmdrPage2Info.at(lineNumber).c_str(), length);
+				lineNumber++;
+				if (lineNumber == jsonDataClass.pg2.cmdrPage2Info.size())
+				{
+					lineNumber = 0;
+				}
+				wcsncpy_s(str2, jsonDataClass.pg2.cmdrPage2Info.at(lineNumber).c_str(), length);
+			}
+			setString(2, 0, str0);
+			setString(2, 1, str1);
+			setString(2, 2, str2);
 		}
 		else
 		{
-			wcsncpy_s(str0, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine).c_str(), 32);
-			wcsncpy_s(str1, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine + 1).c_str(), 32);
-			wcsncpy_s(str2, jsonDataClass.pg3.cmdrPage3Info.at(jsonDataClass.pg3.currentLine + 2).c_str(), 32);
+			wcsncpy_s(str0, L"No Scan Data", length);
+			setString(2, 0, str0);
 		}
-		setString(3, 0, str0);
-		setString(3, 1, str1);
-		setString(3, 2, str2);
 		break;
 	default:
 		break;

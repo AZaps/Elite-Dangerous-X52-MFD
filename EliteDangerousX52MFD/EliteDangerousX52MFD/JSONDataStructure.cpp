@@ -1,449 +1,95 @@
 // JSONDataStructure.cpp
 #include "stdafx.h"
 #include "JSONDataStructure.h"
-#include "DepInclude\json.hpp"
-#include <fstream>
 
-using json = nlohmann::json;
 using namespace std;
+using json = nlohmann::json;
+
+typedef void(JSONDataStructure::*EventFunction)(json::object_t obj);
+std::unordered_map<std::string, EventFunction> eventsMap;
 
 /*
-	PARAMETERS: TCHAR *jsonDirectory -> Filepath location of the folder where the json file is located
-				TCHAR *defaultDirectory -> Folder location of this project
-				TCHAR *jsonFilepath -> Exact file location of the json file
+	PARAMETERS: std::string eventString -> determined event title from the journal
 	RETURNS: none
 
-	FUNCTION: Entry point for this file to handle page updates
+	FUNCTION: Determines the correct function to execute based on the event string
 */
-void JSONDataStructure::readStoreJSON(TCHAR *jsonDirectory, TCHAR *defaultDirectory, TCHAR *jsonFilepath) {
-	SetCurrentDirectory(jsonDirectory);
-	setPage0(jsonFilepath);
-	setPage1(jsonFilepath);
-	setPage2(jsonFilepath);
-	setPage3(jsonFilepath);
-	SetCurrentDirectory(defaultDirectory);
-}
-
-/*
-	PARAMETERS:	TCHAR *jsonDirectory -> Filepath location of the folder where the json file is located
-				TCHAR *defaultDirectory -> Folder location of this project
-				TCHAR *jsonFilepath -> Exact file location of the json file
-	RETURNS: none
-
-	FUNCTION: Will determine the current page by the handle to the DirectOutputFn object and update that page on the MFD. This is so the page doesn't have to be manually refreshed by the user every polling update
-*/
-
-void JSONDataStructure::updateCurrentPage(TCHAR *jsonDirectory, TCHAR *defaultDirectory, TCHAR *jsonFilepath, DirectOutputFn& fnJSON)
+void JSONDataStructure::readStoreJSON(std::string eventString) 
 {
-	SetCurrentDirectory(jsonDirectory);
-
-	ifstream cmdrDataFile(jsonFilepath);
-	json cmdrData(cmdrDataFile);
-	int length = 32;
-	int currentPage = fnJSON.getCurrentPage();
-
-	// Get current page
-	switch (currentPage)
+	// String to JSON object and compare event
+	json::object_t tempObj = json::parse(eventString.begin(), eventString.end());
+	if (tempObj["event"].is_null() != true)
 	{
-	case 0:
-		switch (pg0.currentLine)
+		string event = tempObj["event"];
+		auto it = eventsMap.find(event);
+		if (it == eventsMap.end())
 		{
-		case 8:
-			fnJSON.setString(0, 0, pg0.cmdrPage0Info[pg0.currentLine]);
-			fnJSON.setString(0, 1, pg0.cmdrPage0Info[pg0.currentLine + 1]);
-			fnJSON.setString(0, 2, pg0.cmdrPage0Info[pg0.currentLine - 8]);
-			break;
-		case 9:
-			fnJSON.setString(0, 0, pg0.cmdrPage0Info[pg0.currentLine]);
-			fnJSON.setString(0, 1, pg0.cmdrPage0Info[pg0.currentLine - 9]);
-			fnJSON.setString(0, 2, pg0.cmdrPage0Info[pg0.currentLine - 8]);
-			break;
-		default:
-			fnJSON.setString(0, 0, pg0.cmdrPage0Info[pg0.currentLine]);
-			fnJSON.setString(0, 1, pg0.cmdrPage0Info[pg0.currentLine + 1]);
-			fnJSON.setString(0, 2, pg0.cmdrPage0Info[pg0.currentLine + 2]);
-			break;
-		}
-		break;
-	case 1:
-		switch (pg1.currentLine)
-		{
-		case 4:
-			fnJSON.setString(1, 0, pg1.cmdrPage1Info[pg1.currentLine]);
-			fnJSON.setString(1, 1, pg1.cmdrPage1Info[pg1.currentLine + 1]);
-			fnJSON.setString(1, 2, pg1.cmdrPage1Info[pg1.currentLine - 4]);
-			break;
-		case 5:
-			fnJSON.setString(1, 0, pg1.cmdrPage1Info[pg1.currentLine]);
-			fnJSON.setString(1, 1, pg1.cmdrPage1Info[pg1.currentLine - 5]);
-			fnJSON.setString(1, 2, pg1.cmdrPage1Info[pg1.currentLine - 4]);
-			break;
-		default:
-			fnJSON.setString(1, 0, pg1.cmdrPage1Info[pg1.currentLine]);
-			fnJSON.setString(1, 1, pg1.cmdrPage1Info[pg1.currentLine + 1]);
-			fnJSON.setString(1, 2, pg1.cmdrPage1Info[pg1.currentLine + 2]);
-			break;
-		}
-		break;
-	case 2:
-		fnJSON.setString(2, 0, pg2.cmdrPage2Info[0]);
-		fnJSON.setString(2, 1, pg2.cmdrPage2Info[1]);
-		fnJSON.setString(2, 2, pg2.cmdrPage2Info[2]);
-		break;
-	case 3:
-		wchar_t str0[32];
-		wchar_t str1[32];
-		wchar_t str2[32];
-		if (pg3.currentLine == ((pg3.amountOfShips * 3) - 2))
-		{
-			wcsncpy_s(str0, pg3.cmdrPage3Info.at(pg3.currentLine).c_str(), 32);
-			wcsncpy_s(str1, pg3.cmdrPage3Info.at(pg3.currentLine + 1).c_str(), 32);
-			wcsncpy_s(str2, pg3.cmdrPage3Info.at(pg3.currentLine - ((pg3.amountOfShips * 3) - 2)).c_str(), 32);
-		}
-		else if (pg3.currentLine == ((pg3.amountOfShips * 3) - 1))
-		{
-			wcsncpy_s(str0, pg3.cmdrPage3Info.at(pg3.currentLine).c_str(), 32);
-			wcsncpy_s(str1, pg3.cmdrPage3Info.at(pg3.currentLine - ((pg3.amountOfShips * 3) - 1)).c_str(), 32);
-			wcsncpy_s(str2, pg3.cmdrPage3Info.at(pg3.currentLine - ((pg3.amountOfShips * 3) - 2)).c_str(), 32);
+			//cout << "Event: " << tempObj["event"] << " not in list.\n";
 		}
 		else
 		{
-			wcsncpy_s(str0, pg3.cmdrPage3Info.at(pg3.currentLine).c_str(), 32);
-			wcsncpy_s(str1, pg3.cmdrPage3Info.at(pg3.currentLine + 1).c_str(), 32);
-			wcsncpy_s(str2, pg3.cmdrPage3Info.at(pg3.currentLine + 2).c_str(), 32);
-		}
-		fnJSON.setString(3, 0, str0);
-		fnJSON.setString(3, 1, str1);
-		fnJSON.setString(3, 2, str2);
-		break;
-	default:
-		break;
-	}
-
-	SetCurrentDirectory(defaultDirectory);
-}
-
-/*
-	PARAMETERS: TCHAR *jsonFilepath -> location of the json file so the data can be read from it and stored locally to update on the controller
-	RETURNS: none
-
-	FUNCTION: Reads the json file and updates the relevant page information listed below. Uses null checking on the json file so if the current key value doesn't exist it won't crash upon trying to read a non existant key value. 
-*/
-/*
-	Page 0 consists of:
-	Greetings CMDR
-	(CMDR NAME)
-	CR: (CREDIT BALANCE)
-	(CURRENT SHIP)
-	Combat: (COMBAT_RANK)
-	Trade: (TRADE_RANK)
-	Exploration: (EXPLORATION_RANK)
-	CQC: (CQC_RANK)
-	Federation: (FEDERATION_RANK)
-	Empire: (EMPIRE_RANK)
-*/
-void JSONDataStructure::setPage0(TCHAR *jsonFilepath)
-{
-	ifstream cmdrDataFile(jsonFilepath);
-	json cmdrData(cmdrDataFile);
-	int length = 32;
-
-	if (isFirstTime) {
-		pg0.currentLine = 0;
-	}
-	wcsncpy_s(pg0.cmdrPage0Info[0], L"Greetings CMDR", length);
-
-	// Key value null checking. Returns true if it doesn't exist
-	if (cmdrData["commander"]["name"].is_null() != true)
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[1], strToWStr(cmdrData["commander"]["name"]).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[1], strToWStr("No Name").c_str(), length);
-	}
-
-	if (cmdrData["commander"]["credits"].is_null() != true)
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[2], strToWStr("CR: " + to_string((long)cmdrData["commander"]["credits"])).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[2], strToWStr("No Credits").c_str(), length);
-	}
-	
-	if (cmdrData["ships"][0]["name"].is_null() != true)
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[3], strToWStr(cmdrData["ships"][0]["name"]).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[3], strToWStr("No Ship").c_str(), length);
-	}
-	
-	if (cmdrData["commander"]["rank"]["combat"].is_null() != true)
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[4], strToWStr("Combat: " + combatRank[cmdrData["commander"]["rank"]["combat"]]).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[4], strToWStr("No Combat").c_str(), length);
-	}
-
-	if (cmdrData["commander"]["rank"]["trade"].is_null() != true)
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[5], strToWStr("Trade: " + tradeRank[cmdrData["commander"]["rank"]["trade"]]).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[5], strToWStr("No Trade").c_str(), length);
-	}
-
-	if (cmdrData["commander"]["rank"]["explore"].is_null() != true)
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[6], strToWStr("Ex: " + explorerRank[cmdrData["commander"]["rank"]["explore"]]).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[6], strToWStr("No Exploration").c_str(), length);
-	}
-
-	if (cmdrData["commander"]["rank"]["cqc"].is_null() != true)
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[7], strToWStr("CQC: " + cqcRank[cmdrData["commander"]["rank"]["cqc"]]).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[7], strToWStr("CQC: No Rank").c_str(), length);
-	}
-
-	if (cmdrData["commander"]["rank"]["federation"].is_null() != true)
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[8], strToWStr("Fed: " + federationRank[cmdrData["commander"]["rank"]["federation"]]).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[8], strToWStr("No Federation").c_str(), length);
-	}
-
-	if (cmdrData["commander"]["rank"]["empire"].is_null() != true)
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[9], strToWStr("Empire: " + empireRank[cmdrData["commander"]["rank"]["empire"]]).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg0.cmdrPage0Info[9], strToWStr("No Empire").c_str(), length);
-	}
-}
-
-/*
-	PARAMETERS: TCHAR *jsonFilepath -> location of the json file so the data can be read from it and stored locally to update on the controller
-	RETURNS: none
-
-	FUNCTION: Reads the json file and updates the relevant page information listed below. Uses null checking on the json file so if the current key value doesn't exist it won't crash upon trying to read a non existant key value.
-*/
-/*
-	Page 1 consists of:
-	Ship Details
-	(CURRENT_SHIP_NAME)
-	Cargo: (CURRENT / TOTAL_CARGO_CAPACITY)
-	MainTank: (CURRENT / TOTAL_MAIN_FUEL_LEVEL)
-	ResTank: (CURRENT / TOTAL_RESERVE_TANK)
-	Oxygen: (TIME_REMAINING MINUTES:SECONDS)
-*/
-void JSONDataStructure::setPage1(TCHAR * jsonFilepath)
-{
-	ifstream cmdrDataFile(jsonFilepath);
-	json cmdrData(cmdrDataFile);
-	int length = 32;
-
-	if (isFirstTime) {
-		pg1.currentLine = 0;
-	}
-	wcsncpy_s(pg1.cmdrPage1Info[0], L"Ship Details", length);
-
-	if (cmdrData["ships"][0]["name"].is_null() != true)
-	{
-		wcsncpy_s(pg1.cmdrPage1Info[1], strToWStr(cmdrData["ships"][0]["name"]).c_str(), length);
-	}
-
-	if (cmdrData["ship"]["cargo"]["capacity"].is_null() != true)
-	{
-		wcsncpy_s(pg1.cmdrPage1Info[2], strToWStr("Cargo: " + to_string((int)cmdrData["ship"]["cargo"]["qty"]) + "/" + to_string((int)cmdrData["ship"]["cargo"]["capacity"])).c_str(), length);
-
-	}
-	else
-	{
-		wcsncpy_s(pg1.cmdrPage1Info[2], strToWStr("Cargo: No Module").c_str(), length);
-	}
-	
-	// Main fuel two decimal place precision conversion
-	if (cmdrData["ship"]["fuel"]["main"]["level"].is_null() != true)
-	{
-		double currentMainLevel = cmdrData["ship"]["fuel"]["main"]["level"];
-		cout.flush();
-		stringstream mainlevelStream;
-		mainlevelStream << fixed << setprecision(2) << currentMainLevel;
-		wcsncpy_s(pg1.cmdrPage1Info[3], strToWStr("MainT: " + mainlevelStream.str() + "/" + to_string((int)cmdrData["ship"]["fuel"]["main"]["capacity"])).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg1.cmdrPage1Info[3], strToWStr("No Fuel").c_str(), length);
-	}
-
-	// Reserve fuel two decimal place precision conversion
-	if (cmdrData["ship"]["fuel"]["reserve"]["capacity"].is_null() != true)
-	{
-		double currentResLevel = cmdrData["ship"]["fuel"]["reserve"]["level"];
-		double totalResLevel = cmdrData["ship"]["fuel"]["reserve"]["capacity"];
-		cout.flush();
-		stringstream currentResStream;
-		stringstream totalResStream;
-		currentResStream << fixed << setprecision(2) << currentResLevel;
-		totalResStream << fixed << setprecision(2) << totalResLevel;
-		wcsncpy_s(pg1.cmdrPage1Info[4], strToWStr("ResT: " + currentResStream.str() + "/" + totalResStream.str()).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg1.cmdrPage1Info[4], strToWStr("No Reserve").c_str(), length);
-	}
-
-	// Oxygen remaining minutes:seconds
-	if (cmdrData["ship"]["oxygenRemaining"].is_null() != true)
-	{
-		long milliOxygenRemaining = cmdrData["ship"]["oxygenRemaining"];
-		long seconds = (milliOxygenRemaining / 1000) % 60;
-		long minutes = (milliOxygenRemaining / 60000) % 60;
-		wcsncpy_s(pg1.cmdrPage1Info[5], strToWStr("Oxygen: " + to_string(minutes) + ":" + to_string(seconds)).c_str(), length);
-	}
-	else
-	{
-		wcsncpy_s(pg1.cmdrPage1Info[5], strToWStr("No Oxygen").c_str(), length);
-	}
-}
-
-/*
-	PARAMETERS: TCHAR *jsonFilepath -> location of the json file so the data can be read from it and stored locally to update on the controller
-	RETURNS: none
-
-	FUNCTION: Reads the json file and updates the relevant page information listed below. Uses null checking on the json file so if the current key value doesn't exist it won't crash upon trying to read a non existant key value.
-*/
-/*
-	Page 2 consists of:
-	(CURRENT_SYSTEM)
-	(CURRENT_STATION) if possible
-	(CURRENT_PLANET) if landed on one and not on station
-*/
-void JSONDataStructure::setPage2(TCHAR * jsonFilePath)
-{
-	ifstream cmdrDataFile(jsonFilePath);
-	json cmdrData(cmdrDataFile);
-	int length = 32;
-	
-	// Get currentShipID to determine current location of CMDR
-	if (cmdrData["commander"]["currentShipId"].is_null() != true)
-	{
-		int shipID = cmdrData["commander"]["currentShipId"];
-		if (cmdrData["ships"].is_null() != true)
-		{
-			int amountOfShips = cmdrData["ships"].size();
-			int selectedShipID;
-			for (size_t i = 0; i < amountOfShips; i++)
-			{
-				selectedShipID = cmdrData["ships"][i]["id"];
-				if (selectedShipID == shipID)
-				{
-					// System
-					if (cmdrData["ships"][i]["starsystem"]["name"].is_null() != true) 
-					{
-						wcsncpy_s(pg2.cmdrPage2Info[0], strToWStr(cmdrData["ships"][i]["starsystem"]["name"]).c_str(), length);
-					}
-					else
-					{
-						// Get the last visited system name because the planet name can't be retrieved if on the surface
-						wcsncpy_s(pg2.cmdrPage2Info[0], strToWStr(cmdrData["lastSystem"]["name"]).c_str(), length);
-					}
-					// Station
-					if (cmdrData["ships"][i]["station"].is_null() != true)
-					{
-						wcsncpy_s(pg2.cmdrPage2Info[1], strToWStr(cmdrData["ships"][i]["station"]["name"]).c_str(), length);
-						wcsncpy_s(pg2.cmdrPage2Info[2], strToWStr("").c_str(), length);
-					}
-					else
-					{
-						wcsncpy_s(pg2.cmdrPage2Info[1], strToWStr("On surface or").c_str(), length);
-						wcsncpy_s(pg2.cmdrPage2Info[2], strToWStr("in space").c_str(), length);
-					}
-				}
-			}
+			// If the event matches, call the associated function within the map
+			(*this.*it->second)(tempObj);
 		}
 	}
 }
 
 /*
-	PARAMETERS: TCHAR *jsonFilepath -> location of the json file so the data can be read from it and stored locally to update on the controller
+	PARAMETERS: none
 	RETURNS: none
 
-	FUNCTION: Reads the json file and updates the relevant page information listed below. Uses null checking on the json file so if the current key value doesn't exist it won't crash upon trying to read a non existant key value.
+	FUNCTION: Adds entries to the unordered map on startup. By doing this, comparison of the string from the log, if true, will call the associated function and update the saved data.
 */
-/*
-	Page 3 consists of: FOR TOTAL AMOUNT OF SHIPS STATIONED
-	All Ships
-	(SHIP_NAME)
-	(STARSYSTEM)
-	(STATION)
-*/
-void JSONDataStructure::setPage3(TCHAR * jsonFilePath)
-{
-	ifstream cmdrDataFile(jsonFilePath);
-	json cmdrData(cmdrDataFile);
-	int length = 32;
-	pg3.cmdrPage3Info.clear();
-
-	if (isFirstTime) {
-		pg3.currentLine = 0;
-	}
-
-	// Get currentShipID to determine current location of CMDR
-	if (cmdrData["commander"]["currentShipId"].is_null() != true)
-	{
-		int shipID = cmdrData["commander"]["currentShipId"];
-		if (cmdrData["ships"].is_null() != true)
-		{
-			pg3.amountOfShips = cmdrData["ships"].size();
-
-			// Change array size to equal amount of ships * 3, since it'll be (SHIP, STARSYSTEM, STATION)
-			pg3.cmdrPage3Info.resize(pg3.amountOfShips * 3);
-			int i = 0;
-			while (i != pg3.amountOfShips)
-			{
-				if (cmdrData["ships"][i]["name"].is_null() != true)
-				{
-					pg3.cmdrPage3Info.insert(pg3.cmdrPage3Info.begin() + (i * 3), strToWStr(cmdrData["ships"][i]["name"]).c_str());
-				}
-
-				if (cmdrData["ships"][i]["starsystem"]["name"].is_null() != true)
-				{
-					pg3.cmdrPage3Info.insert(pg3.cmdrPage3Info.begin() + (i * 3 + 1), strToWStr(cmdrData["ships"][i]["starsystem"]["name"]).c_str());
-				}
-				else
-				{
-					pg3.cmdrPage3Info.insert(pg3.cmdrPage3Info.begin() + (i * 3 + 1), strToWStr(cmdrData["lastSystem"]["name"]).c_str());
-				}
-
-				if (cmdrData["ships"][i]["station"]["name"].is_null() != true)
-				{
-					pg3.cmdrPage3Info.insert(pg3.cmdrPage3Info.begin() + (i * 3 + 2), strToWStr(cmdrData["ships"][i]["station"]["name"]).c_str());
-				}
-				else
-				{
-					pg3.cmdrPage3Info.insert(pg3.cmdrPage3Info.begin() + (i * 3 + 2), strToWStr("Surface or Space").c_str());
-				}
-				
-				i++;
-			}
-		}
-	}
+void JSONDataStructure::createMap()
+{																						
+	eventsMap.emplace("LoadGame", &JSONDataStructure::e_LoadGame);						
+	eventsMap.emplace("Rank", &JSONDataStructure::e_Rank);								
+	eventsMap.emplace("Docked", &JSONDataStructure::e_Docked);							
+	eventsMap.emplace("DockingGranted", &JSONDataStructure::e_DockingGranted);			
+	eventsMap.emplace("FSDJump", &JSONDataStructure::e_FSDJump);
+	eventsMap.emplace("Liftoff", &JSONDataStructure::e_Liftoff);
+	eventsMap.emplace("Location", &JSONDataStructure::e_Location);						
+	eventsMap.emplace("SupercruiseEntry", &JSONDataStructure::e_SupercruiseEntry);		
+	eventsMap.emplace("SupercruiseExit", &JSONDataStructure::e_SupercruiseExit);		
+	eventsMap.emplace("Touchdown", &JSONDataStructure::e_Touchdown);					
+	eventsMap.emplace("Undocked", &JSONDataStructure::e_Undocked);						
+	eventsMap.emplace("Scan", &JSONDataStructure::e_Scan);								
+	eventsMap.emplace("BuyExplorationData", &JSONDataStructure::e_BuyExplorationData);	
+	eventsMap.emplace("SellExplorationData", &JSONDataStructure::e_SellExplorationData);
+	eventsMap.emplace("BuyTradeData", &JSONDataStructure::e_BuyTradeData);				
+	eventsMap.emplace("MarketBuy", &JSONDataStructure::e_MarketBuy);					
+	eventsMap.emplace("MarketSell", &JSONDataStructure::e_MarketSell);					
+	eventsMap.emplace("BuyAmmo", &JSONDataStructure::e_BuyAmmo);						
+	eventsMap.emplace("BuyDrones", &JSONDataStructure::e_BuyDrones);					
+	eventsMap.emplace("CommunityGoalReward", &JSONDataStructure::e_CommunityGoalReward);
+	eventsMap.emplace("CrewHire", &JSONDataStructure::e_CrewHire);						
+	eventsMap.emplace("FetchRemoteModule", &JSONDataStructure::e_FetchRemoteModule);	
+	eventsMap.emplace("MissionCompleted", &JSONDataStructure::e_MissionCompleted);		
+	eventsMap.emplace("ModuleBuy", &JSONDataStructure::e_ModuleBuy);				
+	eventsMap.emplace("ModuleSell", &JSONDataStructure::e_ModuleSell);			
+	eventsMap.emplace("ModuleSellRemote", &JSONDataStructure::e_ModuleSellRemote);		
+	eventsMap.emplace("PayFines", &JSONDataStructure::e_PayFines);						
+	eventsMap.emplace("PayLegacyFines", &JSONDataStructure::e_PayLegacyFines);			
+	eventsMap.emplace("RedeemVoucher", &JSONDataStructure::e_RedeemVoucher);			
+	eventsMap.emplace("RefuelAll", &JSONDataStructure::e_RefuelAll);				
+	eventsMap.emplace("RefuelPartial", &JSONDataStructure::e_RefuelPartial);		
+	eventsMap.emplace("Repair", &JSONDataStructure::e_Repair);			
+	eventsMap.emplace("RepairAll", &JSONDataStructure::e_RepairAll);
+	eventsMap.emplace("RestockVehicle", &JSONDataStructure::e_RestockVehicle);			
+	eventsMap.emplace("SellDrones", &JSONDataStructure::e_SellDrones);					
+	eventsMap.emplace("ShipyardBuy", &JSONDataStructure::e_ShipyardBuy);				
+	eventsMap.emplace("ShipyardSell", &JSONDataStructure::e_ShipyardSell);			
+	eventsMap.emplace("ShipyardTransfer", &JSONDataStructure::e_ShipyardTransfer);		
+	eventsMap.emplace("ShipyardSwap", &JSONDataStructure::e_ShipyardSwap);				
+	eventsMap.emplace("PowerplayFastTrack", &JSONDataStructure::e_PowerplayFastTrack);	
+	eventsMap.emplace("PowerplaySalary", &JSONDataStructure::e_PowerplaySalary);	
+	eventsMap.emplace("Continued", &JSONDataStructure::e_Continued);				
+	eventsMap.emplace("DockFighter", &JSONDataStructure::e_DockFighter);				
+	eventsMap.emplace("DockSRV", &JSONDataStructure::e_DockSRV);						
+	eventsMap.emplace("LaunchFighter", &JSONDataStructure::e_LaunchFighter);			
+	eventsMap.emplace("LaunchSRV", &JSONDataStructure::e_LaunchSRV);					
+	eventsMap.emplace("Promotion", &JSONDataStructure::e_Promotion);					
+	eventsMap.emplace("VehicleSwitch", &JSONDataStructure::e_VehicleSwitch);			
 }
 
 /*
@@ -456,4 +102,1099 @@ std::wstring JSONDataStructure::strToWStr(std::string str)
 {
 	wstring wStr = wstring(str.begin(), str.end());
 	return wStr;
+}
+
+void JSONDataStructure::copyCreditBalance()
+{
+	wcsncpy_s(pg0.cmdrPage0Info[3], strToWStr("CR: " + to_string(pg0.creditBalance)).c_str(), length);
+}
+
+std::string JSONDataStructure::formmatedShipName(std::string ship)
+{
+	for (int i = 0; i < ship.length(); i++)
+	{
+		ship[i] = toupper(ship[i]);
+	}
+	if (ship == "SIDEWINDER")
+	{
+		return "Sidewinder";
+	}
+	else if (ship == "EAGLE")
+	{
+		return "Eagle";
+	}
+	else if (ship == "HAULER")
+	{
+		return "Hauler";
+	}
+	else if (ship == "ADDER")
+	{
+		return "Adder";
+	}
+	else if (ship == "IMPERIAL EAGLE")
+	{
+		return "Imperial Eagle";
+	}
+	else if (ship == "VIPER MKIII")
+	{
+		return "Viper MkIII";
+	}
+	else if (ship == "COBRA MKIII")
+	{
+		return "Cobra MkIII";
+	}
+	else if (ship == "VIPER MKIV")
+	{
+		return "Viper MkIV";
+	}
+	else if (ship == "DIAMONDBACK SCOUT")
+	{
+		return "Diamondback Scout";
+	}
+	else if (ship == "COBRA MKIV")
+	{
+		return "Cobra MkIV";
+	}
+	else if (ship == "TYPE-6")
+	{
+		return "Type-6";
+	}
+	else if (ship == "DIAMONDBACK EXPLORER")
+	{
+		return "Diamondback Explorer";
+	}
+	else if (ship == "IMPERIAL COURIER")
+	{
+		return "Imperial Courier";
+	}
+	else if (ship == "KEELBACK")
+	{
+		return "Keelback";
+	}
+	else if (ship == "ASP SCOUT")
+	{
+		return "Asp Scout";
+	}
+	else if (ship == "VULTURE")
+	{
+		return "Vulture";
+	}
+	else if (ship == "ASP EXPLORER")
+	{
+		return "Asp Explorer";
+	}
+	else if (ship == "FEDERAL DROPSHIP")
+	{
+		return "Federal Dropship";
+	}
+	else if (ship == "TYPE-7")
+	{
+		return "Type-7";
+	}
+	else if (ship == "FEDERAL ASSAULT SHIP")
+	{
+		return "Federal Assault Ship";
+	}
+	else if (ship == "IMPERIAL CLIPPER")
+	{
+		return "Imperial Clipper";
+	}
+	else if (ship == "FEDERAL GUNSHIP")
+	{
+		return "Federal Gunship";
+	}
+	else if (ship == "ORCA")
+	{
+		return "Orca";
+	}
+	else if (ship == "BELUGA LINER")
+	{
+		return "Beluga Liner";
+	}
+	else if (ship == "FER-DE-LANCE")
+	{
+		return "Fer-de-Lance";
+	}
+	else if (ship == "PYTHON")
+	{
+		return "Python";
+	}
+	else if (ship == "TYPE-9")
+	{
+		return "Type-9";
+	}
+	else if (ship == "ANACONDA")
+	{
+		return "Anaconda";
+	}
+	else if (ship == "FEDERAL CORVETTE")
+	{
+		return "Federal Corvette";
+	}
+	else if (ship == "IMPERIAL CUTTER")
+	{
+		return "Imperial Cutter";
+	}
+}
+
+/*
+	Each function will take the full JSON object event associated to the correct event key value. Hopefully each of the associated key values are self explanatory and can be easily determined.
+	For easy lookup, each event function is prefixed with 'e_' and the duplicated function name from the journal manual is listed after.
+
+	Not all parts of the function I found relevant yet so some functions may be short and only some of the associated key values are used.
+
+	Each function does key value checks to see if it even exists. Most of the time this might be redundant but I'd rather have value checking saftey instead of the program crashing. I haven't noticed a performance impact either.
+	Once the key value is determined safe and exists, the value is taken from it and stored in the correct location.
+*/
+
+void JSONDataStructure::e_LoadGame(json::object_t obj)
+{
+	wcsncpy_s(pg0.cmdrPage0Info[0], L"Greetings CMDR", length);
+
+	// Key value checking if it exists otherwise, will crash
+	if (obj["Commander"].is_null() != true) {
+		wcsncpy_s(pg0.cmdrPage0Info[1], strToWStr(obj["Commander"]).c_str(), length);
+	}
+	else
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[1], L"No Name", length);
+	}
+
+	if (obj["Ship"].is_null() != true)
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[2], strToWStr(obj["Ship"]).c_str(), length);
+	}
+	else
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[2], L"No Ship", length);
+	}
+
+	if (obj["Credits"].is_null() != true)
+	{
+		pg0.creditBalance = (long)obj["Credits"];
+		wcsncpy_s(pg0.cmdrPage0Info[3], strToWStr("CR: " + to_string((long)obj["Credits"])).c_str(), length);
+	}
+	else
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[3], L"No Credits", length);
+	}
+}
+
+void JSONDataStructure::e_Rank(json::object_t obj)
+{
+	string combat = "Combat: ";
+	string trade = "Trade: ";
+	string exploration = "Exploration: ";
+	string empire = "Empire: ";
+	string federation = "Federation: ";
+	string cqc = "CQC: ";
+
+	if (obj["Combat"].is_null() != true)
+	{
+		// Determine lengths if shorthand is needed
+		if (combat.length() + combatRank[obj["Combat"]].length() <= 16)
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[4], strToWStr(combat + combatRank[obj["Combat"]]).c_str(), length);
+		}
+		else
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[4], strToWStr("C: " + combatRank[obj["Combat"]]).c_str(), length);
+		}
+	}
+	else
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[4], L"No Combat Rank", length);
+	}
+
+	if (obj["Trade"].is_null() != true)
+	{
+		// Determine lengths if shorthand is needed
+		if (trade.length() + tradeRank[obj["Trade"]].length() <= 16)
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[5], strToWStr(trade + tradeRank[obj["Trade"]]).c_str(), length);
+		}
+		else
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[5], strToWStr("T: " + tradeRank[obj["Trade"]]).c_str(), length);
+		}
+	}
+	else
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[5], L"No Trade Rank", length);
+	}
+
+	if (obj["Explore"].is_null() != true)
+	{
+		// Determine lengths if shorthand is needed
+		if (exploration.length() + explorerRank[obj["Explore"]].length() <= 16)
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[6], strToWStr(exploration + explorerRank[obj["Explore"]]).c_str(), length);
+		}
+		else
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[6], strToWStr("EX: " + explorerRank[obj["Explore"]]).c_str(), length);
+		}
+	}
+	else
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[6], L"No Explore Rank", length);
+	}
+
+	if (obj["Empire"].is_null() != true)
+	{
+		// Determine lengths if shorthand is needed
+		if (empire.length() + empireRank[obj["Empire"]].length() <= 16)
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[7], strToWStr(empire + empireRank[obj["Empire"]]).c_str(), length);
+		}
+		else
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[7], strToWStr("EM: " + empireRank[obj["Empire"]]).c_str(), length);
+		}
+	}
+	else
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[7], L"No Empire Rank", length);
+	}
+
+	if (obj["Federation"].is_null() != true)
+	{
+		// Determine lengths if shorthand is needed
+		if (federation.length() + federationRank[obj["Federation"]].length() <= 16)
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[8], strToWStr(federation + federationRank[obj["Federation"]]).c_str(), length);
+		}
+		else
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[8], strToWStr("F: " + federationRank[obj["Federation"]]).c_str(), length);
+		}
+	}
+	else
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[8], L"No Fed Rank", length);
+	}
+
+	if (obj["CQC"].is_null() != true)
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[9], strToWStr(cqc + cqcRank[obj["CQC"]]).c_str(), length);
+	}
+	else
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[9], L"No CQC Rank", length);
+	}
+
+}
+
+void JSONDataStructure::e_Docked(json::object_t obj)
+{
+	// Clear out the vector
+	pg1.cmdrPage1Info.clear();
+
+	// Reset currentLine
+	pg1.currentLine = 0;
+
+	if (obj["StarSystem"].is_null() != true)
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr(obj["StarSystem"]).c_str());
+	}
+
+	if (obj["StationName"].is_null() != true)
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr(obj["StationName"]).c_str());
+	}
+
+	if (obj["StationType"].is_null() != true)
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr(obj["StationType"]).c_str());
+	}
+
+	pg1.cmdrPage1Info.push_back(strToWStr("Docked").c_str());
+
+}
+
+void JSONDataStructure::e_DockingGranted(json::object_t obj)
+{
+	// Store the starsystem as it will be needed after clearing
+	wstring starsystem = pg1.cmdrPage1Info[0];
+
+	// Clear vector and reset the current line
+	pg1.cmdrPage1Info.clear();
+	pg1.currentLine = 0;
+
+	// Push back the starsystem
+	pg1.cmdrPage1Info.push_back(starsystem);
+
+	// Get new info
+	if (obj["StationName"].is_null() != true)
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr(obj["StationName"]).c_str());
+	}
+
+	if (obj["LandingPad"].is_null() != true)
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr("LP -> " + to_string((int)obj["LandingPad"])).c_str());
+	}
+}
+
+void JSONDataStructure::e_FSDJump(json::object_t obj)
+{
+	// Clear the vector and reset the currentline
+	pg1.cmdrPage1Info.clear();
+	pg1.currentLine = 0;
+
+	// Get new info
+	if (obj["StarSystem"].is_null() != true)
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr(obj["StarSystem"]).c_str());
+	}
+
+	pg1.cmdrPage1Info.push_back(strToWStr("In Supercruise").c_str());
+
+}
+
+void JSONDataStructure::e_Liftoff(nlohmann::json::object_t obj)
+{
+	wstring starsystem = pg1.cmdrPage1Info[0];
+	wstring body = pg1.cmdrPage1Info[1];
+
+	pg1.cmdrPage1Info.clear();
+	pg1.currentLine = 0;
+
+	pg1.cmdrPage1Info.push_back(starsystem);
+	pg1.cmdrPage1Info.push_back(body);
+}
+
+void JSONDataStructure::e_Location(json::object_t obj)
+{
+	// Clear vector and reset the currentline
+	pg1.cmdrPage1Info.clear();
+	pg1.currentLine = 0;
+
+	// Get new info
+	if (obj["StarSystem"].is_null() != true)
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr(obj["StarSystem"]).c_str());
+	}
+
+	// Determine docked status
+	if (obj["Docked"].is_null() != true)
+	{
+		if (obj["Docked"])
+		{
+			// Get StationName and StationType since player is docked
+			if (obj["StationName"].is_null() != true)
+			{
+				pg1.cmdrPage1Info.push_back(strToWStr(obj["StationName"]).c_str());
+			}
+			if (obj["StationType"].is_null() != true)
+			{
+				pg1.cmdrPage1Info.push_back(strToWStr(obj["StationType"]).c_str());
+			}
+			pg1.cmdrPage1Info.push_back(strToWStr("Docked").c_str());
+		}
+		else
+		{
+			// Not docked. Get Body and BodyType
+			if (obj["Body"].is_null() != true)
+			{
+				pg1.cmdrPage1Info.push_back(strToWStr(obj["Body"]).c_str());
+				std::string tempStr = obj["Body"];
+				pg1.lastKnownBody = tempStr;
+			}
+			if (obj["BodyType"].is_null() != true)
+			{
+				// BodyType can be null which could be a barycenter
+				string bodyType = obj["BodyType"];
+				if (bodyType.empty())
+				{
+					pg1.cmdrPage1Info.push_back(strToWStr("Barycenter").c_str());
+				}
+				else
+				{
+					pg1.cmdrPage1Info.push_back(strToWStr(bodyType).c_str());
+				}
+			}
+		}
+	}
+}
+
+void JSONDataStructure::e_SupercruiseEntry(json::object_t obj)
+{
+	// Clear vector and reset currentline
+	pg1.cmdrPage1Info.clear();
+	pg1.currentLine = 0;
+
+	// Get new data
+	if (obj["StarSystem"].is_null() != true)
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr(obj["StarSystem"]).c_str());
+		pg1.cmdrPage1Info.push_back(strToWStr("In Supercruise").c_str());
+	}
+}
+
+void JSONDataStructure::e_SupercruiseExit(json::object_t obj)
+{
+	// Clear the vector and reset currentline
+	pg1.cmdrPage1Info.clear();
+	pg1.currentLine = 0;
+
+	// Get new data
+	if (obj["StarSystem"].is_null() != true)
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr(obj["StarSystem"]).c_str());
+	}
+
+	if (obj["Body"].is_null() != true)
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr(obj["Body"]).c_str());
+		std::string tempStr = obj["Body"];
+		pg1.lastKnownBody = tempStr;
+	}
+
+	if (obj["BodyType"].is_null() != true)
+	{
+		// BodyType can be null which could be a barycenter. Might need testing if it is always a barycenter or it could just be space...
+		string bodyType = obj["BodyType"];
+		if (bodyType.empty())
+		{
+			pg1.cmdrPage1Info.push_back(strToWStr("Barycenter").c_str());
+		}
+		else
+		{
+			pg1.cmdrPage1Info.push_back(strToWStr(bodyType).c_str());
+		}
+	}
+}
+
+void JSONDataStructure::e_Touchdown(json::object_t obj)
+{
+	// Get the starsystem
+	wstring starsystem = pg1.cmdrPage1Info[0];
+
+	// Clear vector and reset currentline
+	pg1.cmdrPage1Info.clear();
+	pg1.currentLine = 0;
+
+	// Write back starsystem and body
+	pg1.cmdrPage1Info.push_back(starsystem);
+	if (!pg1.lastKnownBody.empty())
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr(pg1.lastKnownBody).c_str());
+	}
+
+	// Get new latitude and longitude data
+	if (obj["Latitude"].is_null() != true)
+	{
+		stringstream ss;
+		ss << fixed << setprecision(5) << (float)obj["Latitude"];
+		if ((float)obj["Latitude"] < 0)
+		{
+			pg1.cmdrPage1Info.push_back(strToWStr("Lat:" + ss.str()).c_str());
+		}
+		else
+		{
+			pg1.cmdrPage1Info.push_back(strToWStr("Lat: " + ss.str()).c_str());
+		}
+	}
+
+	if (obj["Longitude"].is_null() != true)
+	{
+		stringstream ss;
+		ss << fixed << setprecision(5) << (float)obj["Longitude"];
+		if ((float)obj["Longitude"] < 0)
+		{
+			pg1.cmdrPage1Info.push_back(strToWStr("Lon:" + ss.str()).c_str());
+		}
+		else
+		{
+			pg1.cmdrPage1Info.push_back(strToWStr("Lon: " + ss.str()).c_str());
+		}
+	}
+}
+
+void JSONDataStructure::e_Undocked(json::object_t obj)
+{
+	// Get the starsystem
+	wstring starsystem = pg1.cmdrPage1Info[0];
+
+	// Clear the vector and reset currentline
+	pg1.cmdrPage1Info.clear();
+	pg1.currentLine = 0;
+
+	// Write back starsystem
+	pg1.cmdrPage1Info.push_back(starsystem);
+
+	// Get new data
+	if (obj["StationName"].is_null() != true)
+	{
+		pg1.cmdrPage1Info.push_back(strToWStr(obj["StationName"]).c_str());
+	}
+}
+
+void JSONDataStructure::e_Scan(json::object_t obj)
+{
+	// Clear the vector and reset the currentline
+	pg2.cmdrPage2Info.clear();
+	pg2.currentLine = 0;
+
+	// Get new data
+	if (obj["BodyName"].is_null() != true)
+	{
+		pg2.cmdrPage2Info.push_back(strToWStr(obj["BodyName"]).c_str());
+	}
+
+	if (obj["StarType"].is_null() != true)
+	{
+		string temp0 = obj["StarType"];
+		string temp1 = "Class: ";
+		temp1 = temp1 + temp0;
+		pg2.cmdrPage2Info.push_back(strToWStr(temp1).c_str());
+	}
+
+	if (obj["PlanetClass"].is_null() != true)
+	{
+		pg2.cmdrPage2Info.push_back(strToWStr(obj["PlanetClass"]).c_str());
+	}
+
+	if (obj["Landable"].is_null() != true)
+	{
+		bool isLandable = (bool)obj["Landable"];
+		if (isLandable)
+		{
+			pg2.cmdrPage2Info.push_back(strToWStr("Landable").c_str());
+		}
+		else
+		{
+			pg2.cmdrPage2Info.push_back(strToWStr("Not Landable").c_str());
+		}
+	}
+
+	if (obj["SurfaceGravity"].is_null() != true)
+	{
+		double gravity = (double)obj["SurfaceGravity"];
+		gravity = gravity / 9.81;
+		stringstream ss;
+		ss << fixed << setprecision(2) << gravity;
+		pg2.cmdrPage2Info.push_back(strToWStr(ss.str() + " G").c_str());
+	}
+
+	if (obj["Atmosphere"].is_null() != true)
+	{
+		string atmoStr = obj["Atmosphere"];
+		if (!atmoStr.empty())
+		{
+			pg2.cmdrPage2Info.push_back(strToWStr(obj["Atmosphere"]).c_str());
+		}
+	}
+
+	if (obj["TerraformState"].is_null() != true)
+	{
+		string terraStr = obj["TerraformState"];
+		if (!terraStr.empty())
+		{
+			pg2.cmdrPage2Info.push_back(strToWStr(terraStr).c_str());
+		}
+	}
+
+	if (obj["Volcanism"].is_null() != true)
+	{
+		string volStr = obj["TerraformState"];
+		if (!volStr.empty())
+		{
+			pg2.cmdrPage2Info.push_back(strToWStr(obj["Volcanism"]).c_str());
+		}
+	}
+}
+
+void JSONDataStructure::e_BuyExplorationData(nlohmann::json::object_t obj)
+{
+	if (obj["Cost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Cost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_SellExplorationData(nlohmann::json::object_t obj)
+{
+	signed long int tempBalance = 0;
+	signed long int tempBaseValue = 0;
+	signed long int tempBonus = 0;
+	if (obj["BaseValue"].is_null() != true)
+	{
+		tempBaseValue = obj["BaseValue"];
+		pg0.creditBalance += obj["BaseValue"];
+	}
+
+	if (obj["Bonus"].is_null() != true)
+	{
+		tempBonus = obj["Bonus"];
+		pg0.creditBalance += obj["Bonus"];
+	}
+
+	tempBalance = tempBaseValue + tempBonus;
+	pg0.creditBalance += tempBalance;
+	copyCreditBalance();
+}
+
+void JSONDataStructure::e_BuyTradeData(nlohmann::json::object_t obj)
+{
+	if (obj["Cost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Cost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_MarketBuy(nlohmann::json::object_t obj)
+{
+	if (obj["TotalCost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["TotalCost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_MarketSell(nlohmann::json::object_t obj)
+{
+	if (obj["TotalSale"].is_null() != true)
+	{
+		signed long int tempBalance = obj["TotalSale"];
+		pg0.creditBalance += tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_BuyAmmo(nlohmann::json::object_t obj)
+{
+	if (obj["Cost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Cost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_BuyDrones(nlohmann::json::object_t obj)
+{
+	if (obj["TotalCost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["TotalCost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_CommunityGoalReward(nlohmann::json::object_t obj)
+{
+	if (obj["Reward"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Reward"];
+		pg0.creditBalance += tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_CrewHire(nlohmann::json::object_t obj)
+{
+	if (obj["Cost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Cost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_FetchRemoteModule(nlohmann::json::object_t obj)
+{
+	if (obj["TransferCost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["TransferCost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_MissionCompleted(nlohmann::json::object_t obj)
+{
+	signed long int tempBalance = 0;
+	signed long int tempReward = 0;
+	signed long int tempDonation = 0;
+	if (obj["Reward"].is_null() != true)
+	{
+		tempReward = obj["Reward"];
+	}
+
+	if (obj["Donation"].is_null() != true)
+	{
+		tempDonation = obj["Donation"];
+		tempDonation = tempDonation * -1;
+	}
+
+	tempBalance = tempReward + tempDonation;
+	if (tempBalance < 0)
+	{
+		pg0.creditBalance -= abs(tempBalance);
+		copyCreditBalance();
+	}
+	else
+	{
+		pg0.creditBalance += tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_ModuleBuy(nlohmann::json::object_t obj)
+{
+	signed long int tempBuy = 0;
+	signed long int tempSell = 0;
+	signed long int tempBalance = 0;
+
+	if (obj["BuyPrice"].is_null() != true)
+	{
+		tempBuy = obj["BuyPrice"];
+		tempBuy = tempBuy * -1;
+	}
+	if (obj["SellPrice"].is_null() != true)
+	{
+		tempSell = obj["SellPrice"];
+	}
+
+	// If the balance is less than zero, player lost money on the module buy
+	tempBalance = tempBuy + tempSell;
+	if (tempBalance < 0)
+	{
+		pg0.creditBalance -= abs(tempBalance);
+		copyCreditBalance();
+	}
+	else
+	{
+		pg0.creditBalance += tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_ModuleSell(nlohmann::json::object_t obj)
+{
+	if (obj["SellPrice"].is_null() != true)
+	{
+		signed long int tempBalance = obj["SellPrice"];
+		pg0.creditBalance += tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_ModuleSellRemote(nlohmann::json::object_t obj)
+{
+	if (obj["SellPrice"].is_null() != true)
+	{
+		signed long int tempBalance = obj["SellPrice"];
+		pg0.creditBalance += tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_PayFines(nlohmann::json::object_t obj)
+{
+	if (obj["Amount"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Amount"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_PayLegacyFines(nlohmann::json::object_t obj)
+{
+	if (obj["Amount"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Amount"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_RedeemVoucher(nlohmann::json::object_t obj)
+{
+	if (obj["Amount"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Amount"];
+		pg0.creditBalance += tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_RefuelAll(nlohmann::json::object_t obj)
+{
+	if (obj["Cost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Cost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_RefuelPartial(nlohmann::json::object_t obj)
+{
+	if (obj["Cost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Cost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_Repair(nlohmann::json::object_t obj)
+{
+	if (obj["Cost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Cost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_RepairAll(nlohmann::json::object_t obj)
+{
+	if (obj["Cost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Cost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_RestockVehicle(nlohmann::json::object_t obj)
+{
+	if (obj["Cost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Cost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_SellDrones(nlohmann::json::object_t obj)
+{
+	if (obj["TotalSale"].is_null() != true)
+	{
+		signed long int tempBalance = obj["TotalSale"];
+		pg0.creditBalance += tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_ShipyardBuy(nlohmann::json::object_t obj)
+{
+	signed long int tempBalance = 0;
+	signed long int tempBuy = 0;
+	signed long int tempSell = 0;
+	if (obj["ShipPrice"].is_null() != true)
+	{
+		tempBuy = obj["ShipPrice"];
+		tempBuy = tempBuy * -1;
+	}
+	if (obj["SellPrice"].is_null() != true)
+	{
+		tempSell = obj["SellPrice"];
+	}
+	if (obj["StoreOldShip"].is_null() != true)
+	{
+		string temp = obj["StoreOldShip"];
+		if (temp != "")
+		{
+			if (obj["ShipType"].is_null() != true)
+			{
+				string temp = obj["ShipType"];
+				wcsncpy_s(pg0.cmdrPage0Info[2], strToWStr(formmatedShipName(temp)).c_str(), length);
+			}
+		}
+	}
+
+	tempBalance = tempBuy + tempSell;
+	if (tempBalance < 0)
+	{
+		pg0.creditBalance -= abs(tempBalance);
+		copyCreditBalance();
+	}
+	else
+	{
+		pg0.creditBalance += tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_ShipyardSell(nlohmann::json::object_t obj)
+{
+	if (obj["ShipPrice"].is_null() != true)
+	{
+		signed long int tempBalance = obj["ShipPrice"];
+		pg0.creditBalance += tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_ShipyardTransfer(nlohmann::json::object_t obj)
+{
+	if (obj["TransferPrice"].is_null() != true)
+	{
+		signed long int tempBalance = obj["TransferPrice"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_ShipyardSwap(json::object_t obj)
+{
+	// Changing the name of the currently selected ship
+	if (obj["ShipType"].is_null() != true)
+	{
+		string temp = obj["ShipType"];
+		wcsncpy_s(pg0.cmdrPage0Info[2], strToWStr(formmatedShipName(temp)).c_str(), length);
+	}
+}
+
+void JSONDataStructure::e_PowerplayFastTrack(nlohmann::json::object_t obj)
+{
+	if (obj["Cost"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Cost"];
+		pg0.creditBalance -= tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_PowerplaySalary(nlohmann::json::object_t obj)
+{
+	if (obj["Amount"].is_null() != true)
+	{
+		signed long int tempBalance = obj["Amount"];
+		pg0.creditBalance += tempBalance;
+		copyCreditBalance();
+	}
+}
+
+void JSONDataStructure::e_Continued(json::object_t obj)
+{
+	// Notify new file needs to be read
+	this->continueEvent = true;
+}
+
+void JSONDataStructure::e_DockFighter(json::object_t obj)
+{
+	// Restore mothership name if fighter was docked by player control
+	if (pg0.playerControlFighter)
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[2], pg0.mothership, length);
+	}
+}
+
+void JSONDataStructure::e_DockSRV(json::object_t obj)
+{
+	// Restore mothership name
+	wcsncpy_s(pg0.cmdrPage0Info[2], pg0.mothership, length);
+}
+
+void JSONDataStructure::e_LaunchFighter(json::object_t obj)
+{
+	// Determine if player controlled
+	if (obj["PlayerControlled"].is_null() != true)
+	{
+		if ((bool)obj["PlayerControlled"])
+		{
+			// Save the current Mothership name
+			wcsncpy_s(pg0.mothership, pg0.cmdrPage0Info[2], length);
+
+			// Change ship name to Fighter
+			wcsncpy_s(pg0.cmdrPage0Info[2], L"Fighter", length);
+
+			pg0.playerControlFighter = true;
+		}
+	}
+}
+
+void JSONDataStructure::e_LaunchSRV(json::object_t obj)
+{
+	// Save current mothership name
+	wcsncpy_s(pg0.mothership, pg0.cmdrPage0Info[2], length);
+
+	// Change ship name to SRV
+	wcsncpy_s(pg0.cmdrPage0Info[2], L"SRV", length);
+}
+
+void JSONDataStructure::e_Promotion(json::object_t obj)
+{
+	string combat = "Combat: ";
+	string trade = "Trade: ";
+	string exploration = "Exploration: ";
+	string cqc = "CQC: ";
+	
+	if (obj["Combat"].is_null() != true)
+	{
+		// Determine lengths if shorthand is needed
+		if (combat.length() + combatRank[obj["Combat"]].length() <= 16)
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[4], strToWStr(combat + combatRank[obj["Combat"]]).c_str(), length);
+		}
+		else
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[4], strToWStr("C: " + combatRank[obj["Combat"]]).c_str(), length);
+		}
+	}
+
+	if (obj["Trade"].is_null() != true)
+	{
+		// Determine lengths if shorthand is needed
+		if (trade.length() + tradeRank[obj["Trade"]].length() <= 16)
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[5], strToWStr(trade + tradeRank[obj["Trade"]]).c_str(), length);
+		}
+		else
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[5], strToWStr("T: " + tradeRank[obj["Trade"]]).c_str(), length);
+		}
+	}
+
+	if (obj["Explore"].is_null() != true)
+	{
+		// Determine lengths if shorthand is needed
+		if (exploration.length() + explorerRank[obj["Explore"]].length() <= 16)
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[6], strToWStr(exploration + explorerRank[obj["Explore"]]).c_str(), length);
+		}
+		else
+		{
+			wcsncpy_s(pg0.cmdrPage0Info[6], strToWStr("EX: " + explorerRank[obj["Explore"]]).c_str(), length);
+		}
+	}
+
+	if (obj["CQC"].is_null() != true)
+	{
+		wcsncpy_s(pg0.cmdrPage0Info[9], strToWStr(cqc + cqcRank[obj["CQC"]]).c_str(), length);
+	}
+}
+
+void JSONDataStructure::e_VehicleSwitch(json::object_t obj)
+{
+	if (obj["VehicleSwitch"].is_null() != true)
+	{
+		// Determine switch
+		string shipSwitch = obj["To"];
+		if (shipSwitch == "Fighter")
+		{
+			// Save mothership name
+			wcsncpy_s(pg0.mothership, pg0.cmdrPage0Info[2], length);
+
+			// Ship name to fighter
+			wcsncpy_s(pg0.cmdrPage0Info[2], L"Fighter", length);
+		}
+		else if (shipSwitch == "Mothership")
+		{
+			// Restore mothership name
+			wcsncpy_s(pg0.cmdrPage0Info[2], pg0.mothership, length);
+		}
+	}
 }

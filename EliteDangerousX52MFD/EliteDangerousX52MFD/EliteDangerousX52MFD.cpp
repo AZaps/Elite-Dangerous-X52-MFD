@@ -1,21 +1,15 @@
 // EliteDangerousX52MFD.cpp : Entry point
 
 /*
-	EliteDangerousX52MFD v 1.0.2
+	EliteDangerousX52MFD v 1.1 - Journal Update
 	Special Thanks to:
-		Frontier for Elite Dangerous
+		Frontier Developments for Elite Dangerous
 		Saitek for the use and development of the SDK to run this project
-		Andargor for work on Elite Dangerous Companion Emulator (https://github.com/Andargor/edce-client)
 		Niels Lohmann for work on JSON for Modern C++ (https://github.com/nlohmann/json)
 */
 
 #include "stdafx.h"
-#include <chrono>
-#include <sys/stat.h>
-#include <Shlwapi.h>
 #include <ShlObj.h>
-#include <sstream>
-#include <thread>
 #include "DirectOutputFn.h"
 #include "JSONDataStructure.h"
 
@@ -30,35 +24,37 @@ JSONDataStructure jsonDataClass;
 
 // Text filepath holders
 TCHAR profileFilepath[260];
-TCHAR edceScriptFilepath[260];
-TCHAR edceJSONFilepath[260];
 TCHAR defaultDirectory[260];
-TCHAR edceDirectory[260];
+TCHAR journalFolderpath[260];
+TCHAR currentJournal[260];
 
 // Instance checking
 bool foundProfile = false;
 bool closeOnWindowX = false;
-
-// Global declaration of timer since the user can cancel before time has exired the timer value needs to be accessed by multiple functions
-int timer;
 
 // Internal Functions
 void checkHR(HRESULT hr);
 void txtFileCheck();
 void getFilepaths();
 void createTxtFile();
-bool getFilePathName(bool isProfile);
-void contactEDCE();
+bool getFilePathName();
+void determineJournalFilepath();
+BOOL determineWriteTime();
+void readJournal();
+void waitForJournalUpdate();
 void cleanupAndClose();
 BOOL controlHandler(DWORD fdwCtrlType);
 
 int main()
 {
 	// Alert version number
-	cout << "EliteDangerousX52MFD  v 1.0.2\n";
+	cout << "\n---- EliteDangerousX52MFD  v 1.1 ----\n\n";
 
 	// Setup control handling, if app is closed by other means. (Ctrl + C or hitting the 'X' button)
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE)controlHandler, TRUE);
+
+	// Create map to perform functions based on the event input
+	jsonDataClass.createMap();
 
 	// Initialize DirectOutput
 	checkHR(fn.Initialize(L"EliteDangerousX52MFD"));
@@ -72,7 +68,7 @@ int main()
 	// .txt file check
 	txtFileCheck();
 
-	// Set the profile
+	// Set the profile, if provided
 	if (foundProfile)
 	{
 		checkHR(fn.setDeviceProfile(profileFilepath));
@@ -81,7 +77,7 @@ int main()
 	{
 		cout << "Couldn't link a profile since one was not provided!\n";
 	}
-	
+
 	// Register right soft button clicks and scrolls
 	checkHR(fn.registerSoftBtnCallback());
 
@@ -90,7 +86,7 @@ int main()
 	cout << "Setup Complete.\n\n";
 
 	// Add 5 pages
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < 3; i++)
 	{
 		if (i == 0)
 		{
@@ -102,47 +98,64 @@ int main()
 		}
 	}
 
-	// Check to see if the filepath for edce is available. If not, alert the user to delete the txt file and restart the application to input the required filepaths
-	if (edceDirectory[0] == _T('\0'))
+	// Determine if journal folder path exists
+	if (journalFolderpath[0] == _T('\0'))
 	{
-		cout << "Can't locate the edce directory. Please delete EDX52Settings.txt and restart the application.\n";
-		cout << "\nPress enter to deinitialize, cleanup, and quit.\n";
+		cout << "\nCan't find the journal folder." << endl;
+		cout << "Please delete EDX52Settings.txt and restart this application" << endl;
+		cout << "Press enter to cleanup and quit..." << endl;
 		cin.ignore(numeric_limits<streamsize>::max(), '\n');
 		cleanupAndClose();
 		return 0;
 	}
 
-	// Program just started so inital line numbers need to be set in the JSONDataStructure file so the output can be viewed properly
-	jsonDataClass.isFirstTime = true;
+	// Determine initial file name of the Journal
+	determineJournalFilepath();
 
-	// Main loop, run once per designated cooldown time
-	bool isEliteRunning = true;
-	LPCTSTR appName = TEXT("Elite Dangerous Launcher");
+	// Determine if the current journal found could be the latest
+	if (!determineWriteTime())
+	{
+		cout << "File was created more than 10 minutes ago...Probably not the latest journal.\n";
+		cout << "Waiting for the latest journal to be created\n";
+		waitForJournalUpdate();
+		cout << "Got latest Journal." << endl;
+	}
+
+	// Start first file reading from first line
+	jsonDataClass.readLine = 0;
+
+	// First file read, set continue action to false until another file is created
+	jsonDataClass.continueEvent = false;
+
+	// Set all line numbers to 0
+	jsonDataClass.pg0.currentLine = 0;
+	jsonDataClass.pg1.currentLine = 0;
+	jsonDataClass.pg2.currentLine = 0;
+
+	// Main loop
 	do
 	{
-		contactEDCE();
-		
-		// Check to see if the Elite Dangerous launcher is still open, if not close this program. Also check if a control event was used and if detected close the program even if the launcher is still open.
-		if (FindWindow(NULL, appName) == NULL)
-		{
-			isEliteRunning = false;
-		}
-		if (closeOnWindowX)
-		{
-			isEliteRunning = false;
-		}
-		system("cls");
-	} while (isEliteRunning);
+		// Read line by line of the journal to display new information
+		readJournal();
 
-	// If no control event is detected and the launcher closed after the timer finished the user can manually close the application by tapping enter
-	if (closeOnWindowX == false)
-	{
-		cout << "\nPress enter to deinitialize, cleanup, and quit.\n";
-		cin.ignore(numeric_limits<streamsize>::max(), '\n');
-		cleanupAndClose();
-	}
- 
-    return 0;
+		// When reading the journal and an event of 'Continue' is found, a new file is generated and it needs to be found.
+		if (jsonDataClass.continueEvent)
+		{
+			waitForJournalUpdate();
+			jsonDataClass.continueEvent = false;
+			jsonDataClass.readLine = 0;
+		}
+		else
+		{
+			// Haven't found a continue event, wait until new information is shown
+			waitForJournalUpdate();
+		}
+
+	} while (!closeOnWindowX);
+
+	// No cleanup neccessary as it is done when the window closes.
+
+	return 0;
 }
 
 /*
@@ -155,7 +168,7 @@ int main()
 	Microsoft (MSDN) -> https://msdn.microsoft.com/en-us/library/windows/desktop/aa378137(v=vs.85).aspx
 	Wikipedia -> https://en.wikipedia.org/wiki/HRESULT
 */
-void checkHR(HRESULT hr) 
+void checkHR(HRESULT hr)
 {
 	if (hr == S_OK)
 	{
@@ -175,15 +188,13 @@ void checkHR(HRESULT hr)
 */
 void txtFileCheck()
 {
-	// Create .txt file for filepaths to
-	// Profile to use
-	// edce_client.py
-	cout << "\nLooking for txt file... ";
+	// Create .txt file for filepaths
+	cout << "\nLooking for text file... ";
 	char *filename = "EDX52Settings.txt";
 	struct stat buffer;
-	if (stat(filename, &buffer) == 0 )
+	if (stat(filename, &buffer) == 0)
 	{
-		cout << "FOUND.\nLoading filepaths for X52 profile and EDCE client.\n";
+		cout << "FOUND.\nLoading filepaths.\n";
 		foundProfile = true;
 		ifstream myFile("EDX52Settings.txt");
 		string line;
@@ -209,7 +220,7 @@ void txtFileCheck()
 					strSize = line.length();
 					for (size_t i = 0; i < strSize; i++)
 					{
-						edceScriptFilepath[i] = line[i];
+						defaultDirectory[i] = line[i];
 					}
 					lineNumber++;
 					break;
@@ -217,23 +228,7 @@ void txtFileCheck()
 					strSize = line.length();
 					for (size_t i = 0; i < strSize; i++)
 					{
-						edceJSONFilepath[i] = line[i];
-					}
-					lineNumber++;
-					break;
-				case 3:
-					strSize = line.length();
-					for (size_t i = 0; i < strSize; i++)
-					{
-						defaultDirectory[i] = line[i];
-					}
-					lineNumber++;
-					break;
-				case 4:
-					strSize = line.length();
-					for (size_t i = 0; i < strSize; i++)
-					{
-						edceDirectory[i] = line[i];
+						journalFolderpath[i] = line[i];
 					}
 					break;
 				default:
@@ -259,18 +254,18 @@ void txtFileCheck()
 	PARAMETERS: none
 	RETURNS: none
 
-	FUNCTION: Prompts the user to select the filepath corresponding to the profile location and the edce_client.py location
+	FUNCTION: Prompts the user to select the filepaths corresponding to the profile location and folder of the Journals
 */
 void getFilepaths()
 {
 	// Get the current directory so it can be restored after the files have been found
 	GetCurrentDirectory(MAX_PATH, defaultDirectory);
 
-	// Get filepaths for the profile to be used, the location of the edce_client.py and create a filepath to last.json
+	// Get filepaths for the profile to be used
 	cout << "Couldn't find file. Creating file \"EDX52Settings.txt\"...\n\n";
 	cout << "Please select your profile to use. This will allow use of pre-assigned keybindings, colors, settings, etc.\n";
 	cout << "The default location is -> C:\\Users\\Public\\Public Documents\\SmartTechnology Profiles\n";
-	if (getFilePathName(true))
+	if (getFilePathName())
 	{
 		cout << "Got profile filepath: ";
 		wcout << profileFilepath << endl;
@@ -282,44 +277,51 @@ void getFilepaths()
 		foundProfile = false;
 	}
 
-	cout << "Please find the EDCE folder which contains edce_client.py.\n";
-	if (getFilePathName(false))
-	{
-		cout << "Got EDCE script location: ";
-		wcout << edceScriptFilepath << endl;
+	// Get folder location of the Journals
+	cout << "\nPlease select the folder of the Journal files.\n";
+	cout << "The default location is -> C:\\Users\\User Name\\Saved Games\\Frontier Developments\\Elite Dangerous\\\n";
 
-		// remove edce_client.py from previous selection and replace with last.json
-		cout << "Creating filepath for last.json from the previous selection: ";
-		// Copy to a temp char array
-		char tempArray[sizeof(edceScriptFilepath)];
-		for (size_t i = 0; i < sizeof(edceScriptFilepath); i++)
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	if (SUCCEEDED(hr))
+	{
+		IFileOpenDialog *pFileOpen;
+		// FileOpenDialog object
+		hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileDialog, reinterpret_cast<void**>(&pFileOpen));
+		if (SUCCEEDED(hr))
 		{
-			tempArray[i] = edceScriptFilepath[i];
+			// Select folder only
+			DWORD dwOptions;
+			if (SUCCEEDED(pFileOpen->GetOptions(&dwOptions)))
+			{
+				pFileOpen->SetOptions(dwOptions | FOS_PICKFOLDERS);
+			}
+			// Show Open dialog box
+			hr = pFileOpen->Show(NULL);
+
+			// Get the filename from the dialog box
+			if (SUCCEEDED(hr))
+			{
+				IShellItem *pItem;
+				hr = pFileOpen->GetResult(&pItem);
+				if (SUCCEEDED(hr))
+				{
+					PWSTR pszFilePath;
+					hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+					pItem->Release();
+
+					// Copy folder filepath to global variable so it can be saved to the text file for later retrieval
+					_tcscpy_s(journalFolderpath, pszFilePath);
+				}
+			}
+			else
+			{
+				cout << "Couldn't get the folder path or operation was cancelled.\n";
+				cout << "Close the program, delete the text file, and repeat this opertaion while finding the folder path.\n";
+			}
+			pFileOpen->Release();
 		}
-		PathRemoveFileSpecA(tempArray);
-		size_t tempArraySize = strlen(tempArray) + 1;
-		wchar_t *wcString = new wchar_t[tempArraySize];
-		size_t convertedChars = 0;
-		mbstowcs_s(&convertedChars, wcString, tempArraySize, tempArray, _TRUNCATE);
-		wcscpy_s(edceDirectory, wcString);
-		delete[] wcString;
-
-		strcat_s(tempArray, "\\last.json\0");
-		tempArraySize = strlen(tempArray) + 1;
-		wchar_t *wcStr = new wchar_t[tempArraySize];
-		convertedChars = 0;
-		mbstowcs_s(&convertedChars, wcStr, tempArraySize, tempArray, _TRUNCATE);
-		wcscpy_s(edceJSONFilepath, wcStr);
-		delete[] wcStr;
-		wcout << edceJSONFilepath << endl;
-
-		cout << "Got needed filepaths. Creating txt file to save these paths.\n\n";
+		CoUninitialize();
 	}
-	else
-	{
-		cout << "Couldn't get the script location or the operation was canceled.\n\n";
-	}
-	// Restore the starting directory
 	SetCurrentDirectory(defaultDirectory);
 }
 
@@ -343,22 +345,20 @@ void createTxtFile() {
 	wofstream myFile;
 	myFile.open("EDX52Settings.txt");
 	myFile << profileFilepath << "\n";
-	myFile << edceScriptFilepath << "\n";
-	myFile << edceJSONFilepath << "\n";
 	myFile << defaultDirectory << "\n";
-	myFile << edceDirectory << "\n";
+	myFile << journalFolderpath << "\n";
 	myFile.close();
 	cout << "Wrote to txt file.\n\n";
 }
 
 
 /*
-	PARAMETERS: bool isProfile -> situational awareness if the user is told to select the profile or the python scipt. The difference is required so only the desired file type is shown
+	PARAMETERS: none
 	RETURNS: bool value -> alerts the program if the filepaths are correct and can be opened successfully. Otherwise, the program will alert the user that the operation was cancelled or a filepath wasn't selected
 
-	FUNCTION: Prompts the user to select the required filepaths. The profile filepath for the HOTAS and the filepath of the edce_client.py python script
+	FUNCTION: Prompts the user to select the required filepath of the HOTAS profile
 */
-bool getFilePathName(bool isProfile)
+bool getFilePathName()
 {
 	OPENFILENAME ofn;
 	HWND hwnd = 0;
@@ -367,20 +367,11 @@ bool getFilePathName(bool isProfile)
 	ZeroMemory(&ofn, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
 	ofn.hwndOwner = hwnd;
-	if (isProfile)
-	{
-		ofn.lpstrFile = profileFilepath;
-		ofn.lpstrFile[0] = '\0';
-		ofn.nMaxFile = sizeof(profileFilepath);
-		ofn.lpstrFilter = _T("PR0 File (.pr0)\0*.pr0*\0\0");
-	}
-	else
-	{
-		ofn.lpstrFile = edceScriptFilepath;
-		ofn.lpstrFile[0] = '\0';
-		ofn.nMaxFile = sizeof(edceScriptFilepath);
-		ofn.lpstrFilter = _T("Python File (.py)\0*.py*\0\0");
-	}
+
+	ofn.lpstrFile = profileFilepath;
+	ofn.lpstrFile[0] = '\0';
+	ofn.nMaxFile = sizeof(profileFilepath);
+	ofn.lpstrFilter = _T("PR0 File (.pr0)\0*.pr0*\0\0");
 
 	ofn.nFilterIndex = 1;
 	ofn.lpstrFileTitle = NULL;
@@ -389,7 +380,6 @@ bool getFilePathName(bool isProfile)
 	ofn.Flags = OFN_PATHMUSTEXIST;
 
 	// Display the Open dialog box. 
-
 	if (GetOpenFileName(&ofn) == TRUE) {
 		return true;
 	}
@@ -403,48 +393,215 @@ bool getFilePathName(bool isProfile)
 	PARAMETERS: none
 	RETURNS: none
 
-	FUNCTION: Essentially the main loop that will run as long as the Elite Dangerous client is open. This will run the python script to retireve new information about the player. The JSON file will be read and the display on the controller will be updated.
+	FUNCTION: Gets and sets the latest written/saved to journal. Will be called when needing to get a new journal file either at the beginning of playtime or when a new part is needed.
 */
-void contactEDCE()
+void determineJournalFilepath()
 {
-	// Do this once a minute and then update pages with relevant data
-	// Need to set the directory from the script location
-	SetCurrentDirectory(edceDirectory);
-	
-	// Run the script
-	_wsystem(edceScriptFilepath);
+	// Check directory for latest created files
+	TCHAR tempCurrentFile[260];
+	StringCchCopy(tempCurrentFile, MAX_PATH, journalFolderpath);
+	StringCchCat(tempCurrentFile, MAX_PATH, TEXT("\\*log"));
 
-	// Restore working directory
-	SetCurrentDirectory(defaultDirectory);
+	WIN32_FIND_DATA currentFileData;
+	HANDLE file = FindFirstFile(tempCurrentFile, &currentFileData);
 
-	// Update information
-	jsonDataClass.readStoreJSON(edceDirectory, defaultDirectory, edceJSONFilepath);
-	
-	// Check to see if it is the first time accessed so the default page can be shown instead of a blank screen
-	if (jsonDataClass.isFirstTime)
+	struct FileInfo
 	{
-		fn.setString(0, 0, jsonDataClass.pg0.cmdrPage0Info[0]);
-		fn.setString(0, 1, jsonDataClass.pg0.cmdrPage0Info[1]);
-		fn.setString(0, 2, jsonDataClass.pg0.cmdrPage0Info[2]);
+		HANDLE h;
+		WIN32_FIND_DATA data;
+	} newestFile;
 
-		jsonDataClass.isFirstTime = false;
+	// Determine the latest modified file within the Journal folder
+	if (file != INVALID_HANDLE_VALUE)
+	{
+		newestFile.h = file;
+		newestFile.data = currentFileData;
+
+		while (FindNextFile(file, &currentFileData))
+		{
+			if (CompareFileTime(&currentFileData.ftLastWriteTime, &newestFile.data.ftLastWriteTime) > 0)
+			{
+				newestFile.h = file;
+				newestFile.data = currentFileData;
+			}
+		}
+		StringCchCopy(currentJournal, MAX_PATH, journalFolderpath);
+		StringCchCat(currentJournal, MAX_PATH, TEXT("\\"));
+		StringCchCat(currentJournal, MAX_PATH, newestFile.data.cFileName);
+		FindClose(file);
+	}
+}
+
+/*
+	PARAMETERS: none
+	RETURNS: bool value -> true if the file was created in the last 10 minutes, false if not
+
+	FUNCTION: This will be used to get a rough estimate of when the latest journal was created. I would think anything longer than 10 minutes ago would indicate a journal relating to a different play session.
+*/
+BOOL determineWriteTime()
+{
+	// Do time comparison
+	FILETIME ftCreate, ftAccess, ftWrite;
+	SYSTEMTIME stUTC, stLocal;
+	DWORD dwRet;
+
+	HANDLE hFile = CreateFile(currentJournal, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	if (!GetFileTime(hFile, &ftCreate, &ftAccess, &ftWrite)) {
+		printf("\nGetFileTime failed.\n");
+		cout << "No journals detected. Please run Elite Dangerous at least once and then restart this program." << endl;
+		ExitProcess(GetLastError());
 	}
 
-	jsonDataClass.updateCurrentPage(edceDirectory, defaultDirectory, edceJSONFilepath, fn);
+	FileTimeToSystemTime(&ftWrite, &stUTC);
+	SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
 
-	// Wait for 2.5 minutes
-	cout << "Cooldown: 2.5 minutes\n";
-	using namespace std::this_thread;
-	using namespace std::chrono;
-	// Reset timer, if a control event occurs the timer will be immediately exit and the program will close
-	timer = 150;
-	while (timer != 0)
+	CloseHandle(hFile);
+
+	// Determine if created within the last 10 minutes
+	SYSTEMTIME currentLocal;
+	union ftTime { FILETIME ft; ULARGE_INTEGER uli; };
+
+	ftTime t1;
+	ftTime t2;
+
+	GetLocalTime(&currentLocal);
+
+	SystemTimeToFileTime(&currentLocal, &t1.ft);
+	SystemTimeToFileTime(&stLocal, &t2.ft);
+
+	__int64 diff;
+	diff = t1.uli.QuadPart - t2.uli.QuadPart;
+	diff /= 600000000; // To minutes
+
+	// Less than 10 minute check
+	if (diff < 10)
 	{
-		sleep_until(system_clock::now() + 1s);
-		timer--;
-		cout << timer << "..";
+		return true;
 	}
-	cout << endl;
+	else
+	{
+		return false;
+	}
+}
+
+/*
+	PARAMETERS: none
+	RETURNS: none
+
+	FUNCTION: Reads the currently selected journal and updates passes the selected line to the JSON file to change to a JSON object where the event can be determined.
+*/
+void readJournal()
+{
+	// Read events from the journal line by line and pass to JSONDataStructure to process until end of file
+	ifstream cmdrDataFile(currentJournal);
+	if (cmdrDataFile.is_open())
+	{
+		string line;
+		unsigned int tempLine = 0;
+		while (getline(cmdrDataFile, line))
+		{
+			if (tempLine == jsonDataClass.readLine)
+			{
+				jsonDataClass.readStoreJSON(line);
+				jsonDataClass.readLine++;
+			}
+			tempLine++;
+		}
+	}
+
+	cmdrDataFile.close();
+
+	// Update the page to the most relevant data
+	fn.updatePage(fn.getCurrentPage());
+}
+
+/*
+	PARAMETERS: none
+	RETURNS: none
+
+	FUNCTION: This function will set a associated to when a file changes in the directory. This is useful so the program won't continually read the journal hogging resources. It will wait until there is a change in information.
+*/
+void waitForJournalUpdate()
+{
+	DWORD dwWaitStatus;
+	HANDLE dwChangeHandle[2];
+
+	// Watch for new Journal creations
+	dwChangeHandle[0] = FindFirstChangeNotification(journalFolderpath, FALSE, FILE_NOTIFY_CHANGE_FILE_NAME);
+	if (dwChangeHandle[0] == INVALID_HANDLE_VALUE)
+	{
+		printf("\nFindFirstChangeNotification failed.\n");
+		FindCloseChangeNotification(dwChangeHandle[0]);
+		ExitProcess(GetLastError());
+	}
+
+	// Validity check, make sure the handle notification was set correctly
+	if (dwChangeHandle[0] == NULL || dwChangeHandle[1] == NULL)
+	{
+		printf("\nUnexpected NULL FindFirstChangeNotification\n");
+		ExitProcess(GetLastError());
+	}
+
+	// Open up the journal in a stream for file size checking
+	long prevPos;
+	if (currentJournal[0] != _T('\0'))
+	{
+		ifstream journalFile(currentJournal, ios::binary | ios::ate);
+		prevPos = journalFile.tellg();
+		journalFile.close();
+	}
+
+	// Waiting and detecting changes
+	bool changeDetected = false;
+	while (!changeDetected)
+	{
+		dwWaitStatus = WaitForSingleObject(dwChangeHandle[0], 1000);
+		switch (dwWaitStatus)
+		{
+		/*
+			FILE_NOTIFY_CHANGE_FILE_NAME
+			Runs when a file is added to the directory. I'll be using this if the player exits to the main menu and restarts the game.
+			A new journal should be created.
+		*/
+		case WAIT_OBJECT_0:
+			// Write to file was detected
+			changeDetected = true;
+			if (FindNextChangeNotification(dwChangeHandle[0]) == FALSE)
+			{
+				printf("\nFindFirstChangeNotification failed.\n");
+				ExitProcess(GetLastError());
+			}
+			determineJournalFilepath();
+			break;
+
+		/*
+			After doing some research on the forum on the journal this is the method I have to use to determine if the file has been modified.
+			I'll have to check to see if the file size has changed once every second and if so there has been an update.
+
+			Apparently they are writing to the file by flushing the stream and I have no idea how to detect that.
+			Previously I would use a wait object above but for file writes and it wasn't being detected unless I manually back out and enter the journal folder.
+		*/
+		case WAIT_TIMEOUT:
+			if (currentJournal[0] != _T('\0'))
+			{
+				ifstream journalFile(currentJournal, ios::binary | ios::ate);
+				long newPos = journalFile.tellg();
+				journalFile.close();
+				if (newPos > prevPos)
+				{
+					changeDetected = true;
+				}
+			}
+			break;
+
+		default:
+			printf("\nUnhandled dwWaitStatus\n");
+			ExitProcess(GetLastError());
+			break;
+		}
+	}
+	CloseHandle(dwChangeHandle[0]);
 }
 
 /*
@@ -475,14 +632,12 @@ BOOL controlHandler(DWORD fdwCtrlType) {
 	case CTRL_C_EVENT:
 		closeOnWindowX = true;
 		cleanupAndClose();
-		timer = 1;
 		return(TRUE);
 
 		// CTRL-CLOSE: confirm that the user wants to exit on 'X' button click on window. 
 	case CTRL_CLOSE_EVENT:
 		closeOnWindowX = true;
 		cleanupAndClose();
-		timer = 1;
 		return(TRUE);
 
 		// Pass other signals to the next handler. 
