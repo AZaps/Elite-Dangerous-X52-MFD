@@ -7,7 +7,6 @@ class DirectOutputFn
 	DeviceList m_devices;
 	HMODULE dll;
 	HRESULT hr;
-	int m_scrollpos;
 	int currentPage;
 
 public:
@@ -35,5 +34,4 @@ private:
 	static void __stdcall OnPageChanged(void* hDevice, DWORD dwPage, bool bSetActive, void* pCtxt);
 	static void __stdcall OnSoftButtonChanged(void* hDevice, DWORD dwButtons, void* pCtxt);
 	void updatePageOnScroll(int oneUpZeroDown);
-	//void updatePage(int pageNumber);
 };
