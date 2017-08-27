@@ -48,7 +48,7 @@ BOOL controlHandler(DWORD fdwCtrlType);
 int main()
 {
 	// Alert version number
-	cout << "\n---- EliteDangerousX52MFD  v 1.1 ----\n\n";
+	cout << "\n---- EliteDangerousX52MFD  v 1.1.1 ----\n\n";
 
 	// Setup control handling, if app is closed by other means. (Ctrl + C or hitting the 'X' button)
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE)controlHandler, TRUE);

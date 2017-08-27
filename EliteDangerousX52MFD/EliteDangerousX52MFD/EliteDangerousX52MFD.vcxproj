@@ -200,9 +200,6 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="DirectOutputFn.h" />
     <ClInclude Include="JSONDataStructure.h" />
     <ClInclude Include="resource.h" />
