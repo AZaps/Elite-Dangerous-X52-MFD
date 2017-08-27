@@ -235,6 +235,14 @@ std::string JSONDataStructure::formmatedShipName(std::string ship)
 	{
 		return "Imperial Cutter";
 	}
+	else if (ship == "EMPIRE_COURIER")
+	{
+		return "Empire Courier";
+	}
+	else if (ship == "ASP")
+	{
+		return "Asp";
+	}
 }
 
 /*

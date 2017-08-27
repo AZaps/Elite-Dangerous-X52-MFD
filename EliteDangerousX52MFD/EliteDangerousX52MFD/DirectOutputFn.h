@@ -16,7 +16,7 @@ public:
 	HRESULT Initialize(const wchar_t* wszPluginName);
 	HRESULT Deinitialize();
 	void RegisterDevice();
-	void GetDeviceType();
+	bool GetDeviceType();
 	HRESULT setDeviceProfile(wchar_t* filepath);
 	HRESULT setPage(int pageNumber, const DWORD flag);
 	HRESULT setString(int pageNumber, int stringLineID, wchar_t* stringToOutput);

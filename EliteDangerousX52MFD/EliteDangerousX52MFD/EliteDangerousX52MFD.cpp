@@ -63,7 +63,12 @@ int main()
 	fn.RegisterDevice();
 
 	// Gets the enumerated device
-	fn.GetDeviceType();
+	if (!fn.GetDeviceType())
+	{
+		cout << "\nPress ENTER to close this application.";
+		cin.ignore(numeric_limits<streamsize>::max(), '\n');
+		return 0;
+	}
 
 	// .txt file check
 	txtFileCheck();
@@ -264,7 +269,8 @@ void getFilepaths()
 	// Get filepaths for the profile to be used
 	cout << "Couldn't find file. Creating file \"EDX52Settings.txt\"...\n\n";
 	cout << "Please select your profile to use. This will allow use of pre-assigned keybindings, colors, settings, etc.\n";
-	cout << "The default location is -> C:\\Users\\Public\\Public Documents\\SmartTechnology Profiles\n";
+	cout << "The default location of the profiles under Saitek is -> C:\\Users\\Public\\Public Documents\\SmartTechnology Profiles\n";
+	cout << "The default location of the profiles under Logitech is -> C:\\Users\\Public\\Public Documents\\Logitech\\X52 Professional\n";
 	if (getFilePathName())
 	{
 		cout << "Got profile filepath: ";

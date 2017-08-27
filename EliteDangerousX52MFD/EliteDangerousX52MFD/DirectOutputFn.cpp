@@ -103,28 +103,37 @@ void DirectOutputFn::RegisterDevice()
 
 /*
 	PARAMETERS: none
-	RETURNS: none
+	RETURNS: bool == If the controller is not even connected, the vector will be 0.
 
 	FUNCTION: Determines what device type is connected based on the m_devices array. Sort of hard coded to be the X52 Pro since that is all I am looking for
 */
-void DirectOutputFn::GetDeviceType()
+bool DirectOutputFn::GetDeviceType()
 {
 	cout << "Getting device... ";
 	Pfn_DirectOutput_GetDeviceType fnGetDeviceType = (Pfn_DirectOutput_GetDeviceType)GetProcAddress(dll, "DirectOutput_GetDeviceType");
 	GUID typeGUID = { 0 };
+	if (m_devices.size() == 0)
+	{
+		cout << "The controller is not connected or is not a X52 Pro.\n";
+		cout << "Please close the application and plug in the controller. Then restart the application.\n";
+		return false;
+	}
 	for (DeviceList::iterator it = m_devices.begin(); it != m_devices.end(); it++)
 	{
 		hr = fnGetDeviceType(*it, &typeGUID);
 		if (FAILED(hr))
 		{
 			cout << "FAILED.\n";
+			return false;
 		}
 
 		if (typeGUID == DeviceType_X52Pro)
 		{
 			cout << "Got device X52Pro.\n";
+			return true;
 		}
 	}
+	return false;
 }
 
 /*
