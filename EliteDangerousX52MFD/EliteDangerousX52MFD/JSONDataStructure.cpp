@@ -243,6 +243,10 @@ std::string JSONDataStructure::formmatedShipName(std::string ship)
 	{
 		return "Asp";
 	}
+	else
+	{
+		return "Uknown";
+	}
 }
 
 /*
@@ -279,7 +283,7 @@ void JSONDataStructure::e_LoadGame(json::object_t obj)
 
 	if (obj["Credits"].is_null() != true)
 	{
-		pg0.creditBalance = (long)obj["Credits"];
+		pg0.creditBalance = (long long)obj["Credits"];
 		wcsncpy_s(pg0.cmdrPage0Info[3], strToWStr("CR: " + to_string((long)obj["Credits"])).c_str(), length);
 	}
 	else
@@ -576,46 +580,52 @@ void JSONDataStructure::e_SupercruiseExit(json::object_t obj)
 
 void JSONDataStructure::e_Touchdown(json::object_t obj)
 {
-	// Get the starsystem
-	wstring starsystem = pg1.cmdrPage1Info[0];
-
-	// Clear vector and reset currentline
-	pg1.cmdrPage1Info.clear();
-	pg1.currentLine = 0;
-
-	// Write back starsystem and body
-	pg1.cmdrPage1Info.push_back(starsystem);
-	if (!pg1.lastKnownBody.empty())
+	// Check to see if a starsystem has already been logged. (Vector should be populated) 
+	// If there hasn't been a previously saved system, the player might have already started in SRV mode and the "Location" should be read next.
+	// Otherwise, if the vector is not empty, get correct info.
+	if (!pg1.cmdrPage1Info.empty())
 	{
-		pg1.cmdrPage1Info.push_back(strToWStr(pg1.lastKnownBody).c_str());
-	}
+		// Get the starsystem
+		wstring starsystem = pg1.cmdrPage1Info[0];
 
-	// Get new latitude and longitude data
-	if (obj["Latitude"].is_null() != true)
-	{
-		stringstream ss;
-		ss << fixed << setprecision(5) << (float)obj["Latitude"];
-		if ((float)obj["Latitude"] < 0)
-		{
-			pg1.cmdrPage1Info.push_back(strToWStr("Lat:" + ss.str()).c_str());
-		}
-		else
-		{
-			pg1.cmdrPage1Info.push_back(strToWStr("Lat: " + ss.str()).c_str());
-		}
-	}
+		// Clear vector and reset currentline
+		pg1.cmdrPage1Info.clear();
+		pg1.currentLine = 0;
 
-	if (obj["Longitude"].is_null() != true)
-	{
-		stringstream ss;
-		ss << fixed << setprecision(5) << (float)obj["Longitude"];
-		if ((float)obj["Longitude"] < 0)
+		// Write back starsystem and body
+		pg1.cmdrPage1Info.push_back(starsystem);
+		if (!pg1.lastKnownBody.empty())
 		{
-			pg1.cmdrPage1Info.push_back(strToWStr("Lon:" + ss.str()).c_str());
+			pg1.cmdrPage1Info.push_back(strToWStr(pg1.lastKnownBody).c_str());
 		}
-		else
+
+		// Get new latitude and longitude data
+		if (obj["Latitude"].is_null() != true)
 		{
-			pg1.cmdrPage1Info.push_back(strToWStr("Lon: " + ss.str()).c_str());
+			stringstream ss;
+			ss << fixed << setprecision(5) << (float)obj["Latitude"];
+			if ((float)obj["Latitude"] < 0)
+			{
+				pg1.cmdrPage1Info.push_back(strToWStr("Lat:" + ss.str()).c_str());
+			}
+			else
+			{
+				pg1.cmdrPage1Info.push_back(strToWStr("Lat: " + ss.str()).c_str());
+			}
+		}
+
+		if (obj["Longitude"].is_null() != true)
+		{
+			stringstream ss;
+			ss << fixed << setprecision(5) << (float)obj["Longitude"];
+			if ((float)obj["Longitude"] < 0)
+			{
+				pg1.cmdrPage1Info.push_back(strToWStr("Lon:" + ss.str()).c_str());
+			}
+			else
+			{
+				pg1.cmdrPage1Info.push_back(strToWStr("Lon: " + ss.str()).c_str());
+			}
 		}
 	}
 }

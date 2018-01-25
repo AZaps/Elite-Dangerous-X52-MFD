@@ -1,7 +1,7 @@
 // EliteDangerousX52MFD.cpp : Entry point
 
 /*
-	EliteDangerousX52MFD v 1.1 - Journal Update
+	EliteDangerousX52MFD v 1.1.2
 	Special Thanks to:
 		Frontier Developments for Elite Dangerous
 		Saitek for the use and development of the SDK to run this project
@@ -48,7 +48,7 @@ BOOL controlHandler(DWORD fdwCtrlType);
 int main()
 {
 	// Alert version number
-	cout << "\n---- EliteDangerousX52MFD  v 1.1.1 ----\n\n";
+	cout << "\n---- EliteDangerousX52MFD  v 1.1.2 ----\n\n";
 
 	// Setup control handling, if app is closed by other means. (Ctrl + C or hitting the 'X' button)
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE)controlHandler, TRUE);
